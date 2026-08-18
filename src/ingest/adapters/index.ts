@@ -61,21 +61,9 @@ const SOURCES: SourceSpec[] = [
     priority: 10,
   },
   {
-    id: "arknights-akwiki-events",
-    game: "arknights",
-    url: "https://arknights.wiki.gg/wiki/Event",
-    parserId: "akwiki",
-  },
-  {
     id: "nte-game8-events",
     game: "nte",
     url: "https://game8.co/games/Neverness-to-Everness/archives/592073",
-    parserId: "game8",
-  },
-  {
-    id: "nikki-game8-events",
-    game: "nikki",
-    url: "https://game8.co/games/Infinity-Nikki/archives/487445",
     parserId: "game8",
   },
   {
@@ -95,16 +83,6 @@ const SOURCES: SourceSpec[] = [
     // writing, reached without pretending to be anything we are not.
     url: "https://reverse1999.fandom.com/api.php?action=parse&page=Events&prop=text&formatversion=2&format=json",
     parserId: "fandom",
-  },
-  {
-    id: "ba-bawiki-events",
-    game: "ba",
-    // The rendered page, deliberately, and the opposite call to the Fandom
-    // source above: this wiki is Miraheze, whose robots.txt disallows `/w/` and
-    // `/*?action=`, so the API route is the one that is closed here and
-    // `/wiki/Events` is the surface the site permits.
-    url: "https://bluearchive.wiki/wiki/Events",
-    parserId: "bawiki",
   },
   {
     id: "fgo-fandom-events",

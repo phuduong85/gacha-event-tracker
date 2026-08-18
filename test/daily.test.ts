@@ -389,7 +389,7 @@ describe("a game whose day rolls on a different hour", () => {
     // Adding the field must not have moved a single existing reader's day key,
     // which is why it is an override rather than a per-game table.
     expect(resetHourFor("r1999")).toBe(5);
-    for (const game of ["genshin", "endfield", "arknights", undefined] as const) {
+    for (const game of ["genshin", "endfield", undefined] as const) {
       expect(resetHourFor(game)).toBe(RESET_HOUR_LOCAL);
     }
     // A lane the reader invented has no server map and takes the default too.

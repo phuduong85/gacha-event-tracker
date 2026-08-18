@@ -61,14 +61,6 @@ export const GAMES: Record<GameId, GameMeta> = {
   hsr: { id: "hsr", name: "Honkai: Star Rail", short: "Star Rail", hue: "#7B8CFF" , studio: "HoYoverse", dailyTasks: "Daily training, Trailblaze Power" },
   zzz: { id: "zzz", name: "Zenless Zone Zero", short: "ZZZ", hue: "#F2A03D" , studio: "HoYoverse", dailyTasks: "Daily missions, battery" },
   wuwa: { id: "wuwa", name: "Wuthering Waves", short: "Wuwa", hue: "#3DD6A0" , studio: "Kuro Games", dailyTasks: "Daily activity, waveplate" },
-  // Arknights runs a single Global (EN) server for all three of our regions on
-  // a fixed UTC-7, so every region gets the same override rather than the
-  // regional default. Evidenced by the source rather than assumed: every ending
-  // event on arknights.wiki.gg carries an exact end of 10:59:59Z, which is
-  // 03:59:59 at UTC-7 — one second before a 04:00 reset. Without this a
-  // European reader's Arknights day would roll at 03:00 UTC while the game
-  // rolls at 11:00, ticking the wrong box for eight hours.
-  arknights: { id: "arknights", name: "Arknights", short: "Arknights", hue: "#9AA3B8" , studio: "Hypergryph", dailyTasks: "Daily missions, sanity", resetOffsets: { asia: -7, america: -7, europe: -7 } },
   // Endfield has two server groups, not three: Europe is served off the same
   // machine as the Americas, on a fixed UTC-5. So a European player's day rolls
   // at 09:00 UTC — 11:00 in Copenhagen in summer, 10:00 in winter — six hours
@@ -76,7 +68,6 @@ export const GAMES: Record<GameId, GameMeta> = {
   // and `america` already resolves to -5, so Europe is the only real override.
   endfield: { id: "endfield", name: "Arknights: Endfield", short: "Endfield", hue: "#E8635A" , studio: "Hypergryph", dailyTasks: "Daily missions", resetOffsets: { europe: -5 } },
   nte: { id: "nte", name: "Neverness to Everness", short: "NTE", hue: "#C77DFF" , studio: "Hotta Studio", dailyTasks: "Daily tasks" },
-  nikki: { id: "nikki", name: "Infinity Nikki", short: "Nikki", hue: "#F27BB0" , studio: "Infold Games", dailyTasks: "Daily tasks, Vital Energy" },
   // No `resetOffsets`: nothing in the source states a server map that differs
   // from the regional default, and an offset invented here would move real
   // readers' day keys. Add one only against evidence — see games.ts § resetOffsets.
@@ -87,13 +78,6 @@ export const GAMES: Record<GameId, GameMeta> = {
   // state `(UTC-5)`, and every one of them starts at 05:00 and ends at 04:59 —
   // an event ending one minute before the reset that the next one begins on.
   r1999: { id: "r1999", name: "Reverse: 1999", short: "R1999", hue: "#C9A227" , studio: "Bluepoch", dailyTasks: "Daily missions", resetOffsets: { asia: -5, america: -5, europe: -5 }, resetHourLocal: 5 },
-  // No `resetOffsets` and no `resetHourLocal`, for the reason p5x has none: the
-  // source states no time of day anywhere — every date on bluearchive.wiki's
-  // Global schedule is a bare `YYYY-MM-DD`. Blue Archive Global does run one
-  // worldwide server, so an override is probably owed here eventually, but it
-  // has to come from a source that states the clock. Inventing one moves real
-  // readers' day keys, and a wrong guess ticks the wrong box every night.
-  ba: { id: "ba", name: "Blue Archive", short: "Blue Archive", hue: "#3FCBDD" , studio: "Nexon Games", dailyTasks: "Daily missions, AP" },
   fgo: { id: "fgo", name: "Fate/Grand Order", short: "FGO", hue: "#1D3A8F", studio: "Lasengle", dailyTasks: "Daily missions, AP" },
 };
 

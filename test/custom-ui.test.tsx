@@ -211,14 +211,14 @@ describe("Colophon freshness notice (PRD F7)", () => {
       <Colophon
         sources={[
           fresh,
-          { ...fresh, sourceId: "nikki-game8-events", game: "nikki", lastSuccessAt: new Date(NOW - 80 * HOUR).toISOString() },
+          { ...fresh, sourceId: "p5x-game8-events", game: "p5x", lastSuccessAt: new Date(NOW - 80 * HOUR).toISOString() },
         ]}
         now={NOW}
       />,
     );
     // A count cannot be acted on; a name tells the reader which source page to
     // go and check.
-    expect(html).toContain("Infinity Nikki");
+    expect(html).toContain("Persona 5: The Phantom X");
     expect(html).toContain("not refreshed in over two days");
     expect(html).toContain("3d 8h ago");
     // The headline still reports the freshest confirmation.
@@ -240,7 +240,7 @@ describe("Colophon freshness notice (PRD F7)", () => {
   });
 
   test("caps the list and counts the remainder", () => {
-    const behind = (["hsr", "zzz", "wuwa", "nte", "nikki", "p5x"] as const).map(
+    const behind = (["hsr", "zzz", "wuwa", "nte", "r1999", "p5x"] as const).map(
       (game, i) => ({
         ...fresh,
         sourceId: `${game}-src`,
