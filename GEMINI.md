@@ -157,3 +157,11 @@ Library, Task Tracker. Each service is its own git repo under
 `~/selfhost/<name>/` with its own `CLAUDE.md`/`GEMINI.md`,
 `docker-compose.yml`, and (where publicly routed) an entry in
 `~/selfhost/homepage/CLOUDFLARE_TUNNEL.md`.
+
+## Note
+
+This file is a parallel copy of `CLAUDE.md` for use with Gemini CLI
+(fallback when Claude usage limits are hit) — same content, since Gemini
+CLI's `GEMINI.md` convention is functionally the same as Claude Code's
+`CLAUDE.md` (a project-root markdown file read for context). Keep both in
+sync if one is updated.
