@@ -8,7 +8,7 @@ import { EventDetail } from "./components/EventDetail.tsx";
 import { EventRow, type DailyBadge, type RowEvent } from "./components/EventRow.tsx";
 import { NextUp } from "./components/NextUp.tsx";
 import { Timeline } from "./components/Timeline.tsx";
-import { Colophon } from "./components/Colophon.tsx";
+import { Credits } from "./components/Credits.tsx";
 import { Legend } from "./components/Legend.tsx";
 import { Toast } from "./components/Toast.tsx";
 import { UpdateNotice } from "./components/UpdateNotice.tsx";
@@ -77,6 +77,7 @@ export function App() {
   const [state, setState] = useState<FeedState>({ status: "loading" });
   const [view, setView] = useState<View>("soon");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [creditsOpen, setCreditsOpen] = useState(false);
   // The event most recently ignored, so it can be put back without hunting for
   // a row that just disappeared.
   const [lastIgnored, setLastIgnored] = useState<{ id: string; title: string } | null>(null);
@@ -363,6 +364,8 @@ export function App() {
           next={advanceFocus(focus, enabled)}
           onFocus={(focusGame) => update({ focusGame })}
           onAdvance={() => update({ focusGame: advanceFocus(focus, enabled) })}
+          sources={state.feed.sources}
+          now={now}
         />
 
         <div className="lg:min-w-0 lg:flex-1">
@@ -518,9 +521,30 @@ export function App() {
             </p>
           )}
 
-          <Colophon sources={state.feed.sources} now={now} />
+          {/* Everything Colophon used to say outright — sources, studios,
+              the disclaimer, the "not affiliated" text, the report links —
+              is one click away rather than something scrolled past on every
+              visit. The freshness line it used to lead with lives by the
+              game list now instead (Freshness.tsx). */}
+          <div className="border-t border-hairline px-4 py-4 text-center">
+            <button
+              type="button"
+              onClick={() => setCreditsOpen(true)}
+              className="text-xs text-faint underline decoration-hairline underline-offset-2 transition-colors duration-150 hover:text-ink hover:decoration-near"
+            >
+              Credits
+            </button>
+          </div>
         </div>
       </div>
+
+      {creditsOpen && (
+        <Credits
+          sources={state.feed.sources}
+          now={now}
+          onClose={() => setCreditsOpen(false)}
+        />
+      )}
 
       {lastIgnored !== null && (
         <Toast

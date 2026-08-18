@@ -1,5 +1,7 @@
 import { useGameMeta } from "../state/gameMeta.tsx";
 import type { LaneId } from "../../shared/custom.ts";
+import type { SourceHealth } from "../../shared/feed.ts";
+import { Freshness } from "./Freshness.tsx";
 
 /**
  * One game at a time.
@@ -22,6 +24,8 @@ export function GameFocus({
   next,
   onFocus,
   onAdvance,
+  sources,
+  now,
 }: {
   /** Games the reader has switched on, in feed order. */
   games: LaneId[];
@@ -33,11 +37,24 @@ export function GameFocus({
   next: LaneId | null;
   onFocus: (game: LaneId | null) => void;
   onAdvance: () => void;
+  /** For the freshness note under the list — see Freshness.tsx. */
+  sources: SourceHealth[];
+  now: number;
 }) {
   const gameMeta = useGameMeta();
-  // With one game there is nothing to focus down to, and the bar would just be
-  // a chip that does nothing.
-  if (games.length < 2) return null;
+  // With one game there is nothing to focus down to, and the picker would just
+  // be a chip that does nothing — but the freshness note below still belongs
+  // here regardless of how many games there are, so the section itself stays.
+  const hasChoice = games.length >= 2;
+
+  // Alphabetical by the label actually shown, not the underlying id or the
+  // full name — sorting by a name the reader never sees ("Honkai: Star Rail")
+  // would put the visible label ("Star Rail") somewhere that looks arbitrary.
+  // "All" stays pinned first: it isn't a game being sorted, it's the way out
+  // of focus entirely.
+  const sorted = [...games].sort((a, b) =>
+    gameMeta(a).short.localeCompare(gameMeta(b).short),
+  );
 
   return (
     // Below `lg:`, a horizontal scroll strip under the header — the reach a
@@ -45,47 +62,53 @@ export function GameFocus({
     // left rail instead: a mouse can hit any game in one click, and there is
     // finally the width to spare for a persistent list rather than a scroller.
     <section className="border-b border-hairline px-4 py-3 lg:sticky lg:top-4 lg:w-52 lg:shrink-0 lg:border-b-0 lg:border-r lg:py-1 lg:pr-4">
-      <div className="flex items-baseline justify-between gap-3 lg:flex-col lg:items-start lg:gap-1">
-        <p className="eyebrow">Focus</p>
-        <button
-          type="button"
-          onClick={onAdvance}
-          className="shrink-0 text-[0.6875rem] font-medium text-faint transition-colors hover:text-ink"
-        >
-          {next === null ? "Show all games" : `Next: ${gameMeta(next).short}`}
-          <span aria-hidden> →</span>
-        </button>
-      </div>
+      {hasChoice && (
+        <>
+          <div className="flex items-baseline justify-between gap-3 lg:flex-col lg:items-start lg:gap-1">
+            <p className="eyebrow">Focus</p>
+            <button
+              type="button"
+              onClick={onAdvance}
+              className="shrink-0 text-[0.6875rem] font-medium text-faint transition-colors hover:text-ink"
+            >
+              {next === null ? "Show all games" : `Next: ${gameMeta(next).short}`}
+              <span aria-hidden> →</span>
+            </button>
+          </div>
 
-      <div
-        role="group"
-        aria-label="Focus on one game"
-        className="scroll-x -mx-4 mt-2 flex gap-1.5 px-4 pb-1 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0 lg:pt-1"
-      >
-        <Chip
-          label="All"
-          count={total}
-          on={focus === null}
-          hue="var(--color-ink)"
-          onClick={() => onFocus(null)}
-        />
-        {games.map((id) => {
-          const game = gameMeta(id);
-          return (
+          <div
+            role="group"
+            aria-label="Focus on one game"
+            className="scroll-x -mx-4 mt-2 flex gap-1.5 px-4 pb-1 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0 lg:pt-1"
+          >
             <Chip
-              key={id}
-              label={game.short}
-              ariaLabel={game.name}
-              count={counts[id] ?? 0}
-              on={focus === id}
-              hue={game.hue}
-              // Tapping the focused game backs out to all of them, so the chip
-              // that got you here is also the way back.
-              onClick={() => onFocus(focus === id ? null : id)}
+              label="All"
+              count={total}
+              on={focus === null}
+              hue="var(--color-ink)"
+              onClick={() => onFocus(null)}
             />
-          );
-        })}
-      </div>
+            {sorted.map((id) => {
+              const game = gameMeta(id);
+              return (
+                <Chip
+                  key={id}
+                  label={game.short}
+                  ariaLabel={game.name}
+                  count={counts[id] ?? 0}
+                  on={focus === id}
+                  hue={game.hue}
+                  // Tapping the focused game backs out to all of them, so the
+                  // chip that got you here is also the way back.
+                  onClick={() => onFocus(focus === id ? null : id)}
+                />
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      <Freshness sources={sources} now={now} />
     </section>
   );
 }

@@ -2,10 +2,10 @@ import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
   BUG_URL,
-  Colophon,
+  Credits,
   FEATURE_URL,
   bugReportUrl,
-} from "../src/client/components/Colophon.tsx";
+} from "../src/client/components/Credits.tsx";
 
 /**
  * The issue forms, and the app's links into them.
@@ -155,10 +155,14 @@ describe("the app's links into them", () => {
     );
   });
 
-  test("the footer offers both, and carries its own freshness line into the bug form", () => {
+  test("the credits sheet offers both, and carries the freshness value into the bug form", () => {
+    // The freshness line itself is shown next to the game list now
+    // (Freshness.tsx, test/freshness.test.tsx), not here — but Credits still
+    // has to compute the same value and carry it into the bug link, since a
+    // report should arrive already saying whether the calendar was current.
     const NOW = Date.parse("2026-08-17T12:00:00.000Z");
     const html = renderToStaticMarkup(
-      <Colophon
+      <Credits
         sources={[
           {
             sourceId: "genshin-game8-events",
@@ -169,14 +173,14 @@ describe("the app's links into them", () => {
           },
         ]}
         now={NOW}
+        onClose={() => {}}
       />,
     );
 
     expect(html).toContain("Report a problem");
     expect(html).toContain("request a feature");
     expect(html).toContain("template=feature_request.yml");
-    // The age the reader is being shown is the age the report will carry.
-    expect(html).toContain("3h 0m ago");
+    // The age the report link carries matches what Freshness would have shown.
     expect(html).toContain(encodeURIComponent("3h 0m ago"));
   });
 
