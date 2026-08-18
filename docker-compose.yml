@@ -7,5 +7,6 @@ services:
       - "127.0.0.1:3020:3000"
     volumes:
       - ./public/data:/app/public/data
+      - ./game-icons:/app/public/game-icons
     environment:
       - BASE_PATH=/

@@ -94,6 +94,27 @@ can update the served feed without a rebuild; a fresh `docker compose build`
 still bakes in whatever `bun run build:feed` produced from fixtures/snapshots
 at image-build time, which the mount then overlays at runtime.
 
+### Game icons
+
+`./game-icons` (repo root, gitignored except its own README) mounts into
+`/app/public/game-icons` the same way `./public/data` does — runtime content
+outside the image, so it survives a rebuild without being committed.
+`serve.ts` needs no code for this: it already serves anything under
+`public/` generically, so a file dropped in `game-icons/` is reachable at
+`/game-icons/<name>` as soon as it exists on disk. Convention is
+`<game-id>.<ext>` (the id from `GameId` in `src/shared/schema.ts`) — see
+`game-icons/README.md`. As of 2026-08-18 this is the folder and the mount
+only. Two things are still open: an in-app tool to upload an icon for a
+game, and wiring the client to actually show one next to that game's title
+wherever it appears (chips, event rows, etc.). The upload tool specifically
+has an unresolved architecture question — this app has never accepted a
+mutating request from a client before (see the top of this file: no
+accounts, no server-side user data, and that's the whole reason
+`gachaevent.duongfamilylab.net` is public with no Cloudflare Access). A
+real upload endpoint would be a first, and a security-relevant one on a
+publicly reachable, unauthenticated hostname — decide that trade-off
+explicitly before adding one, rather than defaulting into it.
+
 After building, `docker system prune -f` — bitten before by stale cached
 layers on other services here. Removes dangling images/networks/build cache
 only; running containers and their images are untouched.

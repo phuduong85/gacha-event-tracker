@@ -118,6 +118,10 @@ dist
 # runtime data
 data/
 
+# game icons the reader supplies — see game-icons/README.md
+game-icons/*
+!game-icons/README.md
+
 # build output
 public/
 
