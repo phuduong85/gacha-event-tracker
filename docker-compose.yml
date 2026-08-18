@@ -1,0 +1,11 @@
+services:
+  event-clock:
+    build: .
+    container_name: gacha-event-tracker
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3020:3000"
+    volumes:
+      - ./public/data:/app/public/data
+    environment:
+      - BASE_PATH=/
