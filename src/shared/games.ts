@@ -79,6 +79,19 @@ export const GAMES: Record<GameId, GameMeta> = {
   // an event ending one minute before the reset that the next one begins on.
   r1999: { id: "r1999", name: "Reverse: 1999", short: "R1999", hue: "#C9A227" , studio: "Bluepoch", dailyTasks: "Daily missions", resetOffsets: { asia: -5, america: -5, europe: -5 }, resetHourLocal: 5 },
   fgo: { id: "fgo", name: "Fate/Grand Order", short: "FGO", hue: "#1D3A8F", studio: "Lasengle", dailyTasks: "Daily missions, AP" },
+  // No source registered yet: pathtonowhere.wiki.gg has no source for a live
+  // or upcoming event anywhere on it (see CLAUDE.md § Path to Nowhere). Same
+  // shape Arknights had in this file before its source existed.
+  //
+  // No `resetOffsets` or `resetHourLocal` either. Event pages on the wiki do
+  // write `(Server Time)` on every date, and the handful still stating a full
+  // range end one minute before what would be a 05:00 rollover — the same
+  // shape as Reverse: 1999's evidence. But unlike r1999's `(UTC-5)`, nothing
+  // on the wiki states what UTC offset "Server Time" actually is, so there is
+  // no offset to encode — and that evidence predates the source's own most
+  // recent edit by over a year, so it is not current either. Add both only
+  // once a real source states the UTC offset.
+  ptn: { id: "ptn", name: "Path to Nowhere", short: "PTN", hue: "#8FCC3D", studio: "Aisno Games", dailyTasks: "Daily Dispatch" },
 };
 
 export const GAME_LIST: GameMeta[] = Object.values(GAMES);
