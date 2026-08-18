@@ -84,12 +84,6 @@ const SOURCES: SourceSpec[] = [
     url: "https://reverse1999.fandom.com/api.php?action=parse&page=Events&prop=text&formatversion=2&format=json",
     parserId: "fandom",
   },
-  {
-    id: "fgo-fandom-events",
-    game: "fgo",
-    url: "https://fategrandorder.fandom.com/api.php?action=parse&page=Event_List&prop=text&formatversion=2&format=json",
-    parserId: "fandom",
-  },
 ];
 
 function toAdapter(spec: SourceSpec): Adapter {

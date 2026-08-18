@@ -78,7 +78,6 @@ export const GAMES: Record<GameId, GameMeta> = {
   // state `(UTC-5)`, and every one of them starts at 05:00 and ends at 04:59 —
   // an event ending one minute before the reset that the next one begins on.
   r1999: { id: "r1999", name: "Reverse: 1999", short: "R1999", hue: "#C9A227" , studio: "Bluepoch", dailyTasks: "Daily missions", resetOffsets: { asia: -5, america: -5, europe: -5 }, resetHourLocal: 5 },
-  fgo: { id: "fgo", name: "Fate/Grand Order", short: "FGO", hue: "#1D3A8F", studio: "Lasengle", dailyTasks: "Daily missions, AP" },
   // No source registered yet: pathtonowhere.wiki.gg has no source for a live
   // or upcoming event anywhere on it (see CLAUDE.md § Path to Nowhere). Same
   // shape Arknights had in this file before its source existed.

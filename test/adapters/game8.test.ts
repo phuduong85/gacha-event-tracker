@@ -34,7 +34,6 @@ const CASES: Array<{ adapter: Adapter; fixture: string }> = [
   // action API, and `snapshots/` names every stored body `<id>.html` whatever
   // its content type. The fixture is the bytes the fetcher would store.
   { adapter: adapter("r1999-fandom-events"), fixture: "fixtures/r1999/fandom-events-2026-08-17" },
-  { adapter: adapter("fgo-fandom-events"), fixture: "fixtures/fgo/fandom-events-2026-08-18" },
 ];
 
 async function runAdapter(adapter: Adapter, fixture: string) {
