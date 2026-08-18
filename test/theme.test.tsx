@@ -33,7 +33,6 @@ function prefs(theme: Prefs["theme"]): Prefs {
     showCompleted: true,
     showIgnored: false,
     regionConfirmed: true,
-    onboarded: true,
     theme,
   };
 }

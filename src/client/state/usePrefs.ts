@@ -35,8 +35,6 @@ export interface Prefs {
   showIgnored: boolean;
   /** False until the reader confirms or changes the guessed region. */
   regionConfirmed: boolean;
-  /** False until the reader has picked their games on first run. */
-  onboarded: boolean;
   /** Which palette to render. "system" follows prefers-color-scheme. */
   theme: "dark" | "light" | "system";
 }
@@ -51,7 +49,6 @@ function defaults(): Prefs {
     showCompleted: true,
     showIgnored: false,
     regionConfirmed: false,
-    onboarded: false,
     theme: "system",
   };
 }
