@@ -33,14 +33,17 @@ a subpath, wiring it through will need a Dockerfile `ARG`, not just this line.
 
 ## Games removed from this fork
 
-Arknights, Infinity Nikki, and Blue Archive are gone entirely — schema
-(`GameId`), `GAMES`, their sources in `SOURCES`, the `akwiki`/`bawiki`
-parsers (nothing else referenced them), fixtures, snapshots, and test
-coverage. Reason: I don't play them. Upstream's own docs (`docs/PRD.md`,
-`docs/DATA-MODEL.md`, `docs/INGESTION.md`, `docs/ARCHITECTURE.md`,
-`docs/FEEDBACK.md`, `AGENTS.md`) still describe all three as current,
-tracked games — **deliberately left untouched** rather than edited to match,
-so `git fetch upstream && git merge upstream/main` (see below) stays
+Arknights, Infinity Nikki, Blue Archive, and Fate/Grand Order are gone
+entirely — schema (`GameId`), `GAMES`, their sources in `SOURCES`, the
+`akwiki`/`bawiki` parsers (nothing else referenced them), the
+FGO-specific branch inside `parsers/fandom.ts` (`parseFgoEventsPage`
+and friends — dead code once nothing fed it; the "standard" path r1999
+uses is untouched), fixtures, snapshots, and test coverage. Reason: I
+don't play them. Upstream's own docs (`docs/PRD.md`, `docs/DATA-MODEL.md`,
+`docs/INGESTION.md`, `docs/ARCHITECTURE.md`, `docs/FEEDBACK.md`,
+`AGENTS.md`) still describe all four as current, tracked games —
+**deliberately left untouched** rather than edited to match, so
+`git fetch upstream && git merge upstream/main` (see below) stays
 low-friction. If a stale doc reference is ever confusing, that's the
 trade-off; re-litigate it there, not by editing upstream's docs piecemeal.
 
