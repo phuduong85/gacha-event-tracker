@@ -93,7 +93,13 @@ async function main(): Promise<void> {
   const id = buildId(assets);
   await Bun.write(resolve(OUT, "sw.js"), injectBuild(workerSource, id));
 
-  for (const name of ["manifest.webmanifest", "icon.svg"]) {
+  for (const name of [
+    "manifest.webmanifest",
+    "icon.svg",
+    "icon-192.png",
+    "icon-512.png",
+    "apple-touch-icon.png",
+  ]) {
     await Bun.write(
       resolve(OUT, name),
       Bun.file(resolve(ROOT, "src/client", name)),

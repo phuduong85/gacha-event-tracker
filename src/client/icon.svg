@@ -1,11 +1,32 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Event Clock">
-  <rect width="64" height="64" rx="14" fill="#12141C"/>
-  <g>
-    <rect x="10" y="26" width="5" height="12" rx="1.5" fill="#FF4D6A"/>
-    <rect x="17" y="26" width="5" height="12" rx="1.5" fill="#FF4D6A"/>
-    <rect x="24" y="26" width="5" height="12" rx="1.5" fill="#E8B33C"/>
-    <rect x="31" y="26" width="5" height="12" rx="1.5" fill="#E8B33C"/>
-    <rect x="38" y="26" width="5" height="12" rx="1.5" fill="#2C3145"/>
-    <rect x="45" y="26" width="5" height="12" rx="1.5" fill="#2C3145"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Event Clock">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#5B8DEF"/>
+      <stop offset="33%" stop-color="#8B6BF2"/>
+      <stop offset="66%" stop-color="#E257A6"/>
+      <stop offset="100%" stop-color="#F2A93D"/>
+    </linearGradient>
+    <clipPath id="capsule">
+      <circle cx="256" cy="266" r="132"/>
+    </clipPath>
+  </defs>
+
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- Sparkles: a rare-pull shimmer, kept inside the maskable safe zone. -->
+  <path d="M375,102 L382,133 L413,140 L382,147 L375,178 L368,147 L337,140 L368,133 Z" fill="#FFFFFF" opacity="0.85"/>
+  <path d="M124,338 L129,358 L149,363 L129,368 L124,388 L119,368 L99,363 L119,358 Z" fill="#FFFFFF" opacity="0.75"/>
+
+  <!-- The capsule: the universal gacha signifier, a two-tone gashapon ball. -->
+  <g clip-path="url(#capsule)">
+    <rect x="118" y="128" width="276" height="276" fill="#FFF7EA"/>
+    <rect x="118" y="266" width="276" height="138" fill="#241B4E"/>
+    <ellipse cx="207" cy="196" rx="40" ry="24" fill="#FFFFFF" opacity="0.55" transform="rotate(-25 207 196)"/>
   </g>
+  <circle cx="256" cy="266" r="132" fill="none" stroke="#1B1330" stroke-opacity="0.18" stroke-width="4"/>
+
+  <!-- Seam, with a latch — the detail that reads as "capsule" rather than "ball." -->
+  <rect x="118" y="257" width="276" height="18" fill="#C9BEE0"/>
+  <rect x="118" y="257" width="276" height="4" fill="#FFFFFF" opacity="0.5"/>
+  <rect x="240" y="252" width="32" height="28" rx="6" fill="#8B7FB0"/>
 </svg>
