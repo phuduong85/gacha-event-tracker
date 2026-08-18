@@ -99,21 +99,63 @@ at image-build time, which the mount then overlays at runtime.
 `./game-icons` (repo root, gitignored except its own README) mounts into
 `/app/public/game-icons` the same way `./public/data` does — runtime content
 outside the image, so it survives a rebuild without being committed.
-`serve.ts` needs no code for this: it already serves anything under
-`public/` generically, so a file dropped in `game-icons/` is reachable at
-`/game-icons/<name>` as soon as it exists on disk. Convention is
+`serve.ts` needs no *serving* code for this: it already serves anything
+under `public/` generically, so a file dropped in `game-icons/` is reachable
+at `/game-icons/<name>` as soon as it exists on disk. Convention is
 `<game-id>.<ext>` (the id from `GameId` in `src/shared/schema.ts`) — see
-`game-icons/README.md`. As of 2026-08-18 this is the folder and the mount
-only. Two things are still open: an in-app tool to upload an icon for a
-game, and wiring the client to actually show one next to that game's title
-wherever it appears (chips, event rows, etc.). The upload tool specifically
-has an unresolved architecture question — this app has never accepted a
-mutating request from a client before (see the top of this file: no
-accounts, no server-side user data, and that's the whole reason
-`gachaevent.duongfamilylab.net` is public with no Cloudflare Access). A
-real upload endpoint would be a first, and a security-relevant one on a
-publicly reachable, unauthenticated hostname — decide that trade-off
-explicitly before adding one, rather than defaulting into it.
+`game-icons/README.md`.
+
+**The upload endpoint** (added 2026-08-18) is the one mutating route this
+otherwise-static app has: `POST /api/game-icon/<game-id>` in `serve.ts`,
+gated by `ICON_UPLOAD_PASSWORD` (real value in `.env`, gitignored; template
+in `.env.example`; `docker-compose.yml` loads it via `env_file`, marked
+`required: false` so a missing `.env` disables uploads rather than refusing
+to start the whole app). This was a deliberate, discussed trade-off — this
+hostname is public with no Cloudflare Access, on the reasoning (top of this
+file) that there was nothing mutable to protect. A single static password is
+what was asked for; it is not a substitute for Access if this ever needs to
+be genuinely hardened, just what was chosen for a personal deployment where
+the alternative was putting Access in front of the whole app.
+
+What the endpoint actually does, in order: password check (`timingSafeEqual`
+over SHA-256 hashes, so a wrong-length guess can't be timed against a
+right-length one), a per-caller lockout after 8 wrong passwords in 5 minutes
+(`CF-Connecting-IP` when present — this app runs behind a tunnel proxying
+from `localhost`, so the raw TCP peer is the same address for every caller
+and would key the whole internet into one bucket), a `game-id` whitelist
+(`VALID_GAME_IDS`, hand-copied from `GameId` since the runtime image ships
+`serve.ts` alone — no `src/`, no `node_modules`, no zod — and
+`test/serve-icon-upload.test.ts` pins the two lists against drifting), a
+2MB size cap, and a magic-byte sniff of the actual bytes (png/jpg/webp/gif)
+rather than trusting the client's `Content-Type` header. A successful upload
+replaces any icon that game already had under a different extension and
+updates `game-icons/manifest.json`, which is then just a static file like
+any other — no separate read route.
+
+**A real bug this surfaced and fixed**: an early-rejection response (wrong
+password, bad game id, etc.) that returns before reading the request body
+leaves that body sitting unread on the socket. On a kept-alive HTTP/1.1
+connection the *next* request gets parsed starting wherever the abandoned
+body left off — a connection-corrupting bug that first showed up as later
+tests in the same file mysteriously timing out. Fixed by having every
+early-rejection response set `Connection: close` (`reject()` in serve.ts)
+rather than trying to rely on cancelling the stream, which didn't reliably
+leave the connection in a reusable state either.
+
+**Client side**: `useGameIcons` (fetches `game-icons/manifest.json` once, a
+404 there just means nobody has uploaded anything yet — not an error) feeds
+a `GameIconProvider` context (`state/gameIcon.tsx`, mirroring how
+`gameMeta.tsx` distributes per-game lookups) so any component can ask for a
+game's icon URL without it being threaded through every prop list.
+`GameIcon.tsx` renders it (or nothing — no placeholder glyph; every game
+already has its hue for identity). Shown in: `GameFocus`'s sidebar chips,
+`Controls`' game-toggle chips, and `EventDetail`'s header. The upload UI
+itself lives in `Controls` under "Game icons" — password field + native file
+picker per tracked game (custom/reader-invented lanes have no `GameId` to
+upload against, so they're excluded). The password is kept in that
+component's own state for the page's lifetime once entered, not
+localStorage — uploading several games in a row doesn't mean retyping it,
+and it's gone on reload same as never having been entered.
 
 After building, `docker system prune -f` — bitten before by stale cached
 layers on other services here. Removes dangling images/networks/build cache

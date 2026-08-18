@@ -61,6 +61,7 @@ describe("the theme control", () => {
           onExport={noop}
           onImport={noop}
           own={own}
+          iconUpload={{ games: [], iconUrl: () => null, onUploaded: noop }}
         />
       </GameMetaProvider>,
     );

@@ -20,6 +20,8 @@ import { useDailyLog, type DailyLogMap } from "./state/useDailyLog.ts";
 import { usePrefs } from "./state/usePrefs.ts";
 import { useTheme } from "./state/useTheme.ts";
 import { useCustom } from "./state/useCustom.ts";
+import { useGameIcons } from "./state/useGameIcons.ts";
+import { GameIconProvider } from "./state/gameIcon.tsx";
 import { compareRows, SORT_MODES, type Activity, type SortMode } from "./state/sort.ts";
 import {
   advanceFocus,
@@ -38,6 +40,7 @@ import {
   type LaneId,
 } from "../shared/custom.ts";
 import { metaFor } from "../shared/games.ts";
+import type { GameId } from "../shared/schema.ts";
 
 type View = "soon" | "timeline" | "archive";
 
@@ -89,6 +92,7 @@ export function App() {
   const prog = useProgress();
   const daily = useDailyLog();
   const custom = useCustom();
+  const gameIcons = useGameIcons();
   /**
    * How every lane in this tree is named and coloured.
    *
@@ -303,6 +307,7 @@ export function App() {
 
   return (
     <GameMetaProvider value={gameMeta}>
+    <GameIconProvider value={gameIcons.iconUrl}>
     <Shell>
       <header className="flex items-center justify-between px-4 pb-3 pt-5">
         <div>
@@ -494,6 +499,13 @@ export function App() {
               onRemoveGame: custom.removeGame,
               onAddEvent: custom.addEvent,
             }}
+            iconUpload={{
+              // Only tracked games have a GameId the upload endpoint
+              // recognises — a custom lane has nothing to upload against.
+              games: games.filter((id) => !isCustomGameId(id)) as GameId[],
+              iconUrl: gameIcons.iconUrl,
+              onUploaded: gameIcons.refresh,
+            }}
             onExport={() =>
               exportProgress(prog.progress, daily.logs, ignored.marks, prefs, {
                 games: custom.games,
@@ -592,6 +604,7 @@ export function App() {
         />
       )}
     </Shell>
+    </GameIconProvider>
     </GameMetaProvider>
   );
 }

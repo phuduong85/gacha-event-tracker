@@ -6,6 +6,7 @@
 node_modules
 public
 data
+game-icons
 *.sqlite
 .idea
 docs
@@ -13,3 +14,10 @@ docs
 README.md
 AGENTS.md
 CLAUDE.md
+
+# Never in the build context, belt and braces: no Dockerfile instruction
+# names these anyway (only explicit files/dirs are COPY'd), but a secret has
+# no business being reachable from a build step even for a build that never
+# reads it.
+.env
+.env.*

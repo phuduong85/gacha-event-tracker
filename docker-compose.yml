@@ -10,3 +10,9 @@ services:
       - ./game-icons:/app/public/game-icons
     environment:
       - BASE_PATH=/
+    # Optional: a missing .env means ICON_UPLOAD_PASSWORD is unset, which
+    # serve.ts treats as "uploads disabled" rather than a reason the whole
+    # app should fail to start.
+    env_file:
+      - path: .env
+        required: false

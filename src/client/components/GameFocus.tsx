@@ -1,7 +1,10 @@
 import { useGameMeta } from "../state/gameMeta.tsx";
+import { useGameIconUrl } from "../state/gameIcon.tsx";
 import type { LaneId } from "../../shared/custom.ts";
+import type { GameId } from "../../shared/schema.ts";
 import type { SourceHealth } from "../../shared/feed.ts";
 import { Freshness } from "./Freshness.tsx";
+import { GameIcon } from "./GameIcon.tsx";
 
 /**
  * One game at a time.
@@ -42,6 +45,7 @@ export function GameFocus({
   now: number;
 }) {
   const gameMeta = useGameMeta();
+  const iconUrl = useGameIconUrl();
   // With one game there is nothing to focus down to, and the picker would just
   // be a chip that does nothing — but the freshness note below still belongs
   // here regardless of how many games there are, so the section itself stays.
@@ -95,6 +99,7 @@ export function GameFocus({
                   key={id}
                   label={game.short}
                   ariaLabel={game.name}
+                  icon={iconUrl(id as GameId)}
                   count={counts[id] ?? 0}
                   on={focus === id}
                   hue={game.hue}
@@ -124,6 +129,7 @@ export function GameFocus({
 function Chip({
   label,
   ariaLabel,
+  icon,
   count,
   on,
   hue,
@@ -131,6 +137,8 @@ function Chip({
 }: {
   label: string;
   ariaLabel?: string | undefined;
+  /** Null for "All", and for any game nobody has uploaded one for. */
+  icon?: string | null | undefined;
   count: number;
   on: boolean;
   hue: string;
@@ -153,7 +161,12 @@ function Chip({
         opacity: count === 0 && !on ? 0.5 : 1,
       }}
     >
-      {label}
+      <span className="flex items-center gap-1.5">
+        {icon !== null && icon !== undefined && (
+          <GameIcon url={icon} name={ariaLabel ?? label} size={14} />
+        )}
+        {label}
+      </span>
       <span className="tnum text-[0.625rem] opacity-70">{count}</span>
     </button>
   );

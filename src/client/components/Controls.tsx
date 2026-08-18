@@ -1,7 +1,10 @@
 import type { LaneId } from "../../shared/custom.ts";
-import type { Region } from "../../shared/schema.ts";
+import type { GameId, Region } from "../../shared/schema.ts";
+import { useGameIconUrl } from "../state/gameIcon.tsx";
 import { useGameMeta } from "../state/gameMeta.tsx";
 import type { Prefs } from "../state/usePrefs.ts";
+import { GameIcon } from "./GameIcon.tsx";
+import { IconUpload } from "./IconUpload.tsx";
 import { YourOwn } from "./YourOwn.tsx";
 
 // Asia is hidden here for now, not removed: `Region` still carries it (see
@@ -27,6 +30,7 @@ export function Controls({
   onExport,
   onImport,
   own,
+  iconUpload,
 }: {
   games: LaneId[];
   prefs: Prefs;
@@ -37,8 +41,10 @@ export function Controls({
   onImport: (file: File) => void;
   /** Everything the reader entered themselves, and the ways to change it. */
   own: React.ComponentProps<typeof YourOwn>;
+  iconUpload: React.ComponentProps<typeof IconUpload>;
 }) {
   const gameMeta = useGameMeta();
+  const iconUrl = useGameIconUrl();
   return (
     <section className="border-t border-hairline px-4 py-5">
       <p className="eyebrow">Games</p>
@@ -52,7 +58,7 @@ export function Controls({
               type="button"
               onClick={() => onToggleGame(id)}
               aria-pressed={on}
-              className="rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
+              className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
               style={{
                 borderColor: on ? game.hue : "var(--color-hairline)",
                 color: on ? game.hue : "var(--color-faint)",
@@ -61,6 +67,7 @@ export function Controls({
                   : "transparent",
               }}
             >
+              <GameIcon url={iconUrl(id as GameId)} name={game.name} size={14} />
               {game.short}
             </button>
           );
@@ -161,6 +168,8 @@ export function Controls({
       </div>
 
       <YourOwn {...own} />
+
+      <IconUpload {...iconUpload} />
 
       <div className="mt-6 border-t border-hairline pt-4">
         <p className="eyebrow">Your progress</p>

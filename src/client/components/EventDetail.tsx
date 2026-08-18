@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useGameMeta } from "../state/gameMeta.tsx";
+import { useGameIconUrl } from "../state/gameIcon.tsx";
 import {
   isCustomEventId,
   type CustomEvent,
@@ -15,7 +16,8 @@ import type { Status } from "../state/useProgress.ts";
 import { ProgressControls } from "./ProgressControls.tsx";
 import { DailyChecklist } from "./DailyChecklist.tsx";
 import { dailyOverride } from "../../shared/daily.ts";
-import type { Region } from "../../shared/schema.ts";
+import type { GameId, Region } from "../../shared/schema.ts";
+import { GameIcon } from "./GameIcon.tsx";
 import { Meter, URGENCY_COLOR } from "./Meter.tsx";
 
 export function EventDetail({
@@ -76,6 +78,7 @@ export function EventDetail({
     | undefined;
 }) {
   const gameMeta = useGameMeta();
+  const iconUrl = useGameIconUrl();
   const [editing, setEditing] = useState(false);
   const { event, clock } = row;
   const game = gameMeta(event.game);
@@ -104,7 +107,8 @@ export function EventDetail({
         aria-label={event.title}
         className="relative max-h-[88vh] w-full overflow-y-auto rounded-t-2xl border border-hairline bg-surface p-5 sm:max-w-lg sm:rounded-2xl"
       >
-        <p className="eyebrow" style={{ color: game.hue }}>
+        <p className="eyebrow flex items-center gap-1.5" style={{ color: game.hue }}>
+          <GameIcon url={iconUrl(event.game as GameId)} name={game.name} size={16} />
           {game.name}
         </p>
         <h2 className="mt-1.5 font-display text-xl font-semibold leading-snug">
