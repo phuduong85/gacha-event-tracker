@@ -12,19 +12,50 @@
     <meta name="theme-color" content="#12141c" />
 
     <!--
-      This page is already dark. Two signals, because they cover different
-      readers:
+      Picks the theme before the stylesheet paints anything, so a reader who
+      chose "light" never sees a flash of the dark default first. Inline and
+      blocking, ahead of styles.css, on purpose: the app bundle (main.js) does
+      this properly via useTheme, but that runs after React mounts, which is
+      too late to prevent the flash this exists to avoid.
 
-      color-scheme tells the browser (and well-behaved extensions) that a dark
-      rendering is intended, so form controls and scrollbars come out dark and
-      nothing tries to synthesise a light theme.
-
-      darkreader-lock is Dark Reader's documented opt-out. Without it Dark
-      Reader inverts an already-dark palette, which wrecks the urgency ramp —
-      the colours in this UI carry meaning, so having them re-mapped is not a
-      cosmetic problem.
+      Reads state/storage.ts's key and state/usePrefs.ts's Prefs shape by
+      hand rather than importing them — this has to be inline HTML, not a
+      module, so there is nothing to import. If either changes shape, update
+      the literal below to match.
     -->
-    <meta name="color-scheme" content="dark" />
+    <script>
+      (function () {
+        try {
+          var raw = localStorage.getItem("gacha-tracker:v1:prefs");
+          var theme = raw ? JSON.parse(raw).theme : "system";
+          var resolved =
+            theme === "light" || theme === "dark"
+              ? theme
+              : matchMedia("(prefers-color-scheme: light)").matches
+                ? "light"
+                : "dark";
+          document.documentElement.dataset.theme = resolved;
+        } catch (e) {
+          // Corrupt storage or a disabled localStorage (private mode). The
+          // dark default in styles.css is what renders either way.
+        }
+      })();
+    </script>
+
+    <!--
+      color-scheme tells the browser (and well-behaved extensions) which
+      rendering is intended, so form controls and scrollbars come out matching
+      it and nothing tries to synthesise the other theme. "dark light" rather
+      than a fixed value because the script above already decided which one
+      this load actually is.
+
+      darkreader-lock is Dark Reader's documented opt-out. This app now ships
+      its own light and dark palettes, so Dark Reader inverting either one
+      would wreck the urgency ramp the same way it would have wrecked the old
+      dark-only page — the colours in this UI carry meaning, so having them
+      re-mapped is not a cosmetic problem.
+    -->
+    <meta name="color-scheme" content="dark light" />
     <meta name="darkreader-lock" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

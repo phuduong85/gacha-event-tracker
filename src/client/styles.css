@@ -33,6 +33,36 @@
 
 :root {
   color-scheme: dark;
+  /* Not a Tailwind theme token — nothing generates a utility from it, it only
+     feeds the gradient highlight below — so it lives here rather than in
+     `@theme`. */
+  --ground-highlight: #1a1e2c;
+}
+
+/*
+ * Light palette. Same token names as the dark set in `@theme` above, so every
+ * utility class and every `var(--color-*)` reference in this file resolves
+ * here instead without knowing a second theme exists. Applied by `useTheme`
+ * (state/useTheme.ts), which resolves "system" against prefers-color-scheme
+ * and keeps `data-theme` in sync with it — so this is the only place the
+ * light values need to be written down.
+ */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --color-ground: #f3f4f9;
+  --color-surface: #ffffff;
+  --color-raised: #e9ebf3;
+  --color-hairline: #d6d9e6;
+  --color-ink: #171922;
+  --color-muted: #565d75;
+  --color-faint: #868da6;
+
+  --color-calm: #737ba0;
+  --color-near: #3266d6;
+  --color-soon: #a5720a;
+  --color-critical: #d92952;
+
+  --ground-highlight: #ffffff;
 }
 
 html,
@@ -51,7 +81,7 @@ body {
      rather than a flat fill. Subtle enough not to fight the data. */
   background-image: radial-gradient(
     120% 70% at 50% -10%,
-    #1a1e2c 0%,
+    var(--ground-highlight) 0%,
     var(--color-ground) 60%
   );
   background-attachment: fixed;

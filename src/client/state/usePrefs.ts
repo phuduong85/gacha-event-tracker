@@ -37,6 +37,8 @@ export interface Prefs {
   regionConfirmed: boolean;
   /** False until the reader has picked their games on first run. */
   onboarded: boolean;
+  /** Which palette to render. "system" follows prefers-color-scheme. */
+  theme: "dark" | "light" | "system";
 }
 
 function defaults(): Prefs {
@@ -50,6 +52,7 @@ function defaults(): Prefs {
     showIgnored: false,
     regionConfirmed: false,
     onboarded: false,
+    theme: "system",
   };
 }
 

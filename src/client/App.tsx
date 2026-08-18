@@ -18,6 +18,7 @@ import { useMarkSet } from "./state/useMarkSet.ts";
 import { useProgress } from "./state/useProgress.ts";
 import { useDailyLog, type DailyLogMap } from "./state/useDailyLog.ts";
 import { usePrefs } from "./state/usePrefs.ts";
+import { useTheme } from "./state/useTheme.ts";
 import { useCustom } from "./state/useCustom.ts";
 import { compareRows, SORT_MODES, type Activity, type SortMode } from "./state/sort.ts";
 import {
@@ -82,6 +83,7 @@ export function App() {
   const now = useNow();
   const online = useOnline();
   const { prefs, update, toggleGame } = usePrefs();
+  useTheme(prefs.theme);
   const ignored = useMarkSet(KEYS.ignored);
   const prog = useProgress();
   const daily = useDailyLog();

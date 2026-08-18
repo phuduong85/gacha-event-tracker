@@ -10,6 +10,12 @@ const REGIONS: Array<{ id: Region; label: string }> = [
   { id: "asia", label: "Asia" },
 ];
 
+const THEMES: Array<{ id: Prefs["theme"]; label: string }> = [
+  { id: "system", label: "System" },
+  { id: "dark", label: "Dark" },
+  { id: "light", label: "Light" },
+];
+
 export function Controls({
   games,
   prefs,
@@ -76,6 +82,27 @@ export function Controls({
                 }`}
               >
                 {r.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <p className="eyebrow">Theme</p>
+          <div role="group" aria-label="Theme" className="mt-2 flex gap-1.5">
+            {THEMES.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => onUpdate({ theme: t.id })}
+                aria-pressed={prefs.theme === t.id}
+                className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                  prefs.theme === t.id
+                    ? "border-ink/70 text-ink"
+                    : "border-hairline text-faint hover:text-muted"
+                }`}
+              >
+                {t.label}
               </button>
             ))}
           </div>
