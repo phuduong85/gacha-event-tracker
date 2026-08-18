@@ -121,8 +121,8 @@ export function dailyOverride(
  * The reader's region is always the question; a game can just answer it
  * differently. Most run a server per region and take the default. One that
  * serves two regions off a single machine lists the regions that differ in
- * `resetOffsets` — Endfield's European players sit on the Americas server, so
- * `europe` resolves to UTC-5 there and to UTC+1 everywhere else.
+ * `resetOffsets` — Reverse: 1999 runs one global server on `asia` and
+ * `america`'s clock, not each region's own.
  *
  * A blanket per-game offset would be the wrong shape: it would drag the regions
  * that *do* have their own server onto somebody else's clock, which is a

@@ -37,14 +37,18 @@ const TIMER =
  * Server labels vary in wording ("Americas / Europe:", "Asia:"), so match on
  * the words present rather than expecting one label per region. A single timer
  * can legitimately cover two regions.
+ *
+ * A "Europe" word in the label maps to `america`, not to a `europe` region —
+ * this fork has none (see `time.ts` § guessRegion) — and every label this
+ * source has ever printed pairs "Europe" with "Americas" on the same timer
+ * anyway, so the instant is identical either way.
  */
 function regionsFor(label: string): Region[] {
   const l = label.toLowerCase();
   const out: Region[] = [];
   if (/asia/.test(l)) out.push("asia");
-  if (/america/.test(l)) out.push("america");
-  if (/europe|eu\b/.test(l)) out.push("europe");
-  return out;
+  if (/america|europe|eu\b/.test(l)) out.push("america");
+  return [...new Set(out)];
 }
 
 interface Timer {

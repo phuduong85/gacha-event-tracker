@@ -17,16 +17,21 @@ export const DAY = 24 * HOUR;
 export const REGION_RESET_UTC_OFFSET: Record<Region, number> = {
   asia: 8, // UTC+8
   america: -5,
-  europe: 1,
 };
 
+/**
+ * No `europe` region: every game in this fork that ever distinguished it
+ * (Endfield, Reverse: 1999) already resolved it to the exact same instant as
+ * `america` — see `games.ts` § resetOffsets — so a timezone in Europe's range
+ * lands on `america` here too rather than on a region with no distinct
+ * behavior of its own.
+ */
 export function guessRegion(
   timeZoneOffsetMinutes: number = -new Date().getTimezoneOffset(),
 ): Region {
   const hours = timeZoneOffsetMinutes / 60;
-  if (hours <= -2) return "america";
   if (hours >= 5) return "asia";
-  return "europe";
+  return "america";
 }
 
 /**

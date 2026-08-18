@@ -4,10 +4,12 @@ import { useGameMeta } from "../state/gameMeta.tsx";
 import type { Prefs } from "../state/usePrefs.ts";
 import { YourOwn } from "./YourOwn.tsx";
 
+// Asia is hidden here for now, not removed: `Region` still carries it (see
+// schema.ts) and everything that reads a stored region still honours it — this
+// is a UI-only step back from offering it as a choice, easy to undo by adding
+// the entry back. Europe is gone for real; see time.ts § guessRegion.
 const REGIONS: Array<{ id: Region; label: string }> = [
   { id: "america", label: "America" },
-  { id: "europe", label: "Europe" },
-  { id: "asia", label: "Asia" },
 ];
 
 const THEMES: Array<{ id: Prefs["theme"]; label: string }> = [

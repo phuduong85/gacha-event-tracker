@@ -44,7 +44,7 @@ export function Dailies({
 }) {
   const gameMeta = useGameMeta();
   // Each game rolls on its own server clock, so "today" is asked per game
-  // rather than once for the section — Endfield's European day can still be
+  // rather than once for the section — Reverse: 1999's day can still be
   // yesterday's while every HoYo game has already turned over.
   // Only tracked games have a standing chore — a lane the reader invented has
   // no routine we could name for them (docs/DATA-MODEL.md § Reader-authored key

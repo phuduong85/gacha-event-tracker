@@ -61,12 +61,12 @@ export const GAMES: Record<GameId, GameMeta> = {
   hsr: { id: "hsr", name: "Honkai: Star Rail", short: "Star Rail", hue: "#7B8CFF" , studio: "HoYoverse", dailyTasks: "Daily training, Trailblaze Power" },
   zzz: { id: "zzz", name: "Zenless Zone Zero", short: "ZZZ", hue: "#F2A03D" , studio: "HoYoverse", dailyTasks: "Daily missions, battery" },
   wuwa: { id: "wuwa", name: "Wuthering Waves", short: "Wuwa", hue: "#3DD6A0" , studio: "Kuro Games", dailyTasks: "Daily activity, waveplate" },
-  // Endfield has two server groups, not three: Europe is served off the same
-  // machine as the Americas, on a fixed UTC-5. So a European player's day rolls
-  // at 09:00 UTC — 11:00 in Copenhagen in summer, 10:00 in winter — six hours
-  // after the HoYo/Kuro pattern above. Asia has its own server and is unchanged,
-  // and `america` already resolves to -5, so Europe is the only real override.
-  endfield: { id: "endfield", name: "Arknights: Endfield", short: "Endfield", hue: "#E8635A" , studio: "Hypergryph", dailyTasks: "Daily missions", resetOffsets: { europe: -5 } },
+  // No `resetOffsets`: Endfield ran two server groups, not three — Europe was
+  // served off the same Americas machine, on the same fixed UTC-5 `america`
+  // already resolves to — and this fork has no `europe` region any more (see
+  // time.ts § guessRegion). Asia has its own server and is unchanged. Nothing
+  // left here actually differs from the regional default.
+  endfield: { id: "endfield", name: "Arknights: Endfield", short: "Endfield", hue: "#E8635A" , studio: "Hypergryph", dailyTasks: "Daily missions" },
   nte: { id: "nte", name: "Neverness to Everness", short: "NTE", hue: "#C77DFF" , studio: "Hotta Studio", dailyTasks: "Daily tasks" },
   // No `resetOffsets`: nothing in the source states a server map that differs
   // from the regional default, and an offset invented here would move real
@@ -77,7 +77,7 @@ export const GAMES: Record<GameId, GameMeta> = {
   // the source rather than from habit: all 154 rows on the wiki's event list
   // state `(UTC-5)`, and every one of them starts at 05:00 and ends at 04:59 —
   // an event ending one minute before the reset that the next one begins on.
-  r1999: { id: "r1999", name: "Reverse: 1999", short: "R1999", hue: "#C9A227" , studio: "Bluepoch", dailyTasks: "Daily missions", resetOffsets: { asia: -5, america: -5, europe: -5 }, resetHourLocal: 5 },
+  r1999: { id: "r1999", name: "Reverse: 1999", short: "R1999", hue: "#C9A227" , studio: "Bluepoch", dailyTasks: "Daily missions", resetOffsets: { asia: -5, america: -5 }, resetHourLocal: 5 },
   // No source registered yet: pathtonowhere.wiki.gg has no source for a live
   // or upcoming event anywhere on it (see CLAUDE.md § Path to Nowhere). Same
   // shape Arknights had in this file before its source existed.

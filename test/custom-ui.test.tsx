@@ -153,7 +153,7 @@ describe("EventForm", () => {
 describe("EventRow provenance", () => {
   const row = (id: string) => {
     const event = { ...asDisplayEvent(OWN), id };
-    return { event, clock: clockFor(event, "europe", Date.parse(AT)) };
+    return { event, clock: clockFor(event, "america", Date.parse(AT)) };
   };
 
   test("marks the reader's own event as theirs", () => {

@@ -25,7 +25,7 @@ export const EventType = z.enum([
 ]);
 export type EventType = z.infer<typeof EventType>;
 
-export const Region = z.enum(["asia", "america", "europe"]);
+export const Region = z.enum(["asia", "america"]);
 export type Region = z.infer<typeof Region>;
 
 /**

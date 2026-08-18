@@ -12,8 +12,7 @@
     "regionScoped": true,
     "regionEnds": {
       "asia": "2026-08-12T20:00:00.000Z",
-      "america": "2026-08-13T09:00:00.000Z",
-      "europe": "2026-08-13T09:00:00.000Z"
+      "america": "2026-08-13T09:00:00.000Z"
     },
     "sourceUrl": "https://endfield.wiki.gg/wiki/HEAT_RAGE!_MEGA_ARENA!",
     "sourceId": "endfield-wikigg-events",

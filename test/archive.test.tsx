@@ -32,7 +32,7 @@ function row(overrides: Partial<GachaEvent> = {}): RowEvent {
     updatedAt: AT,
     ...overrides,
   });
-  return { event, clock: clockFor(event, "europe", Date.parse(AT)) };
+  return { event, clock: clockFor(event, "america", Date.parse(AT)) };
 }
 
 function render(node: React.ReactElement): string {

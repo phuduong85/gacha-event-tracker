@@ -59,7 +59,7 @@ describe("urgency", () => {
 
 describe("clockFor", () => {
   test("reports progress through the window", () => {
-    const c = clockFor(event(), "europe", NOW);
+    const c = clockFor(event(), "america", NOW);
     expect(c.live).toBe(true);
     expect(c.progress).toBeCloseTo(0.55, 2);
     expect(c.msRemaining).toBe(Date.parse("2026-08-20T00:00:00.000Z") - NOW);
@@ -70,7 +70,7 @@ describe("clockFor", () => {
     // unknown end as a deadline would be inventing one.
     const c = clockFor(
       event({ endsAt: null, endPrecision: "unknown" }),
-      "europe",
+      "america",
       NOW,
     );
     expect(c.msRemaining).toBeNull();
@@ -85,7 +85,6 @@ describe("clockFor", () => {
         regionScoped: true,
         regionEnds: {
           asia: "2026-08-20T00:00:00.000Z",
-          europe: "2026-08-20T07:00:00.000Z",
           america: "2026-08-20T13:00:00.000Z",
         },
       }),
@@ -98,7 +97,7 @@ describe("clockFor", () => {
   test("marks an event that has not started as upcoming", () => {
     const c = clockFor(
       event({ startsAt: "2026-09-01T00:00:00.000Z", endsAt: "2026-09-10T00:00:00.000Z" }),
-      "europe",
+      "america",
       NOW,
     );
     expect(c.upcoming).toBe(true);
@@ -109,10 +108,10 @@ describe("clockFor", () => {
 describe("endingSoonestFirst", () => {
   test("live before upcoming, soonest end first, unknown ends last", () => {
     const rows = [
-      { key: "upcoming", clock: clockFor(event({ startsAt: "2026-09-01T00:00:00.000Z", endsAt: "2026-09-10T00:00:00.000Z" }), "europe", NOW) },
-      { key: "unknown", clock: clockFor(event({ endsAt: null, endPrecision: "unknown" }), "europe", NOW) },
-      { key: "later", clock: clockFor(event({ endsAt: "2026-08-25T00:00:00.000Z" }), "europe", NOW) },
-      { key: "soonest", clock: clockFor(event({ endsAt: "2026-08-16T00:00:00.000Z" }), "europe", NOW) },
+      { key: "upcoming", clock: clockFor(event({ startsAt: "2026-09-01T00:00:00.000Z", endsAt: "2026-09-10T00:00:00.000Z" }), "america", NOW) },
+      { key: "unknown", clock: clockFor(event({ endsAt: null, endPrecision: "unknown" }), "america", NOW) },
+      { key: "later", clock: clockFor(event({ endsAt: "2026-08-25T00:00:00.000Z" }), "america", NOW) },
+      { key: "soonest", clock: clockFor(event({ endsAt: "2026-08-16T00:00:00.000Z" }), "america", NOW) },
     ];
     expect([...rows].sort(endingSoonestFirst).map((r) => r.key)).toEqual([
       "soonest",

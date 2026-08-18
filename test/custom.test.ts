@@ -169,7 +169,7 @@ describe("asDisplayEvent", () => {
     // Not a second countdown implementation — the identical one.
     const clock = clockFor(
       asDisplayEvent(ownEvent()),
-      "europe",
+      "america",
       Date.parse("2026-08-27T00:00:00.000Z"),
     );
     expect(clock.live).toBe(true);
@@ -179,7 +179,7 @@ describe("asDisplayEvent", () => {
   test("an unannounced end yields no countdown, exactly as the feed's does", () => {
     const clock = clockFor(
       asDisplayEvent(ownEvent({ endsAt: null, endPrecision: "unknown" })),
-      "europe",
+      "america",
       Date.parse("2026-08-27T00:00:00.000Z"),
     );
     expect(clock.msRemaining).toBeNull();

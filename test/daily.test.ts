@@ -124,94 +124,14 @@ describe("dayKey", () => {
 
   test("each region rolls at its own instant", () => {
     const instant = at("2026-08-16T02:00:00Z");
-    // Europe (UTC+1) resets at 03:00 UTC, so 02:00 is still the 15th there,
+    // America (UTC-5) resets at 09:00 UTC, so 02:00 is still the 15th there,
     // while Asia rolled over six hours earlier.
-    expect(dayKey(instant, "europe")).toBe("2026-08-15");
+    expect(dayKey(instant, "america")).toBe("2026-08-15");
     expect(dayKey(instant, "asia")).toBe("2026-08-16");
   });
 
   test("survives a UTC month boundary", () => {
     expect(dayKey(at("2026-09-01T00:30:00Z"), "america")).toBe("2026-08-31");
-  });
-});
-
-describe("a game whose server map differs from the default", () => {
-  // Endfield has two server groups, not three: Europe is served off the
-  // Americas machine on a fixed UTC-5, so a European player's 04:00 reset is
-  // 09:00 UTC — six hours after the HoYo/Kuro Europe pattern. Asia has its own
-  // server and is unaffected.
-  const morning = at("2026-08-16T08:00:00Z");
-
-  test("the override beats the regional default for that region", () => {
-    expect(dayKey(morning, "europe", "endfield")).toBe("2026-08-15");
-    expect(dayKey(morning, "europe", "genshin")).toBe("2026-08-16");
-  });
-
-  test("rolls exactly on 09:00 UTC in Europe", () => {
-    expect(dayKey(at("2026-08-16T08:59:59Z"), "europe", "endfield")).toBe(
-      "2026-08-15",
-    );
-    expect(dayKey(at("2026-08-16T09:00:00Z"), "europe", "endfield")).toBe(
-      "2026-08-16",
-    );
-    expect(nextResetMs(morning, "europe", "endfield")).toBe(
-      at("2026-08-16T09:00:00Z"),
-    );
-  });
-
-  test("a region with its own server keeps the answer it always had", () => {
-    // The override is per region on purpose. A blanket per-game offset would
-    // drag Asia — which genuinely has its own Endfield server — onto the
-    // Americas clock, moving a reader's already-logged day keys by eleven
-    // hours to fix a bug they never had.
-    for (const region of ["asia", "america"] as const) {
-      for (const hour of [0, 6, 9, 14, 20, 23]) {
-        const t = at(`2026-08-16T${String(hour).padStart(2, "0")}:30:00Z`);
-        expect(dayKey(t, region, "endfield")).toBe(dayKey(t, region));
-      }
-    }
-  });
-
-  test("a game with no override still follows its region", () => {
-    // Europe is UTC+1, so 03:00 UTC. Asia rolled six hours before that.
-    const instant = at("2026-08-16T02:00:00Z");
-    expect(dayKey(instant, "europe", "genshin")).toBe("2026-08-15");
-    expect(dayKey(instant, "asia", "genshin")).toBe("2026-08-16");
-    // …and matches the answer given with no game at all.
-    expect(dayKey(instant, "europe", "genshin")).toBe(dayKey(instant, "europe"));
-  });
-
-  test("the checklist counts days on the clock that reader is actually on", () => {
-    const start = at("2026-08-16T09:00:00Z"); // an endfield europe reset
-    expect(dailyDays(start, start + 3 * DAY, "europe", "endfield")).toEqual([
-      "2026-08-16",
-      "2026-08-17",
-      "2026-08-18",
-    ]);
-
-    const summary = dailySummary({
-      startsMs: start,
-      endsMs: start + 3 * DAY,
-      region: "europe",
-      game: "endfield",
-      now: at("2026-08-17T08:00:00Z"), // still the 16th on a UTC-5 server
-      logged: [],
-    });
-    expect(summary.today).toBe("2026-08-16");
-    expect(summary.msUntilReset).toBe(HOUR);
-  });
-
-  test("an Asia reader's checklist is byte-identical to before the override", () => {
-    // The regression this guards: an Endfield event whose end lands between the
-    // two candidate resets loses its final claimable day if the wrong clock is
-    // used, and a day that leaves `dailyDays` can never be ticked or untucked
-    // again — the pip is simply not rendered.
-    const start = at("2026-08-06T04:00:00Z");
-    const end = at("2026-08-19T22:00:00Z");
-    expect(dailyDays(start, end, "asia", "endfield")).toEqual(
-      dailyDays(start, end, "asia"),
-    );
-    expect(dailyDays(start, end, "asia", "endfield")).toContain("2026-08-20");
   });
 });
 
@@ -225,7 +145,7 @@ describe("nextResetMs", () => {
   });
 
   test("msUntilReset never exceeds a day", () => {
-    for (const region of ["asia", "america", "europe"] as const) {
+    for (const region of ["asia", "america"] as const) {
       const left = msUntilReset(at("2026-08-15T11:22:33Z"), region);
       expect(left).toBeGreaterThan(0);
       expect(left).toBeLessThanOrEqual(DAY);
@@ -366,20 +286,20 @@ describe("a game whose day rolls on a different hour", () => {
   // than 04:00, so its day rolls at 10:00 UTC. Both facts are read off the
   // source: every row of its event list states (UTC-5) and runs 05:00 → 04:59.
   test("rolls on 10:00 UTC, not the 09:00 a UTC-5 game would", () => {
-    expect(dayKey(at("2026-08-16T09:59:59Z"), "europe", "r1999")).toBe(
+    expect(dayKey(at("2026-08-16T09:59:59Z"), "america", "r1999")).toBe(
       "2026-08-15",
     );
-    expect(dayKey(at("2026-08-16T10:00:00Z"), "europe", "r1999")).toBe(
+    expect(dayKey(at("2026-08-16T10:00:00Z"), "america", "r1999")).toBe(
       "2026-08-16",
     );
-    expect(nextResetMs(at("2026-08-16T08:00:00Z"), "europe", "r1999")).toBe(
+    expect(nextResetMs(at("2026-08-16T08:00:00Z"), "america", "r1999")).toBe(
       at("2026-08-16T10:00:00Z"),
     );
   });
 
   test("every region gets the same answer, because there is one server", () => {
     const instant = at("2026-08-16T09:30:00Z");
-    const keys = (["asia", "america", "europe"] as const).map((r) =>
+    const keys = (["asia", "america"] as const).map((r) =>
       dayKey(instant, r, "r1999"),
     );
     expect(new Set(keys).size).toBe(1);
@@ -398,7 +318,7 @@ describe("a game whose day rolls on a different hour", () => {
 
   test("an event's checklist counts days on the 05:00 clock", () => {
     const start = at("2026-08-13T10:00:00Z"); // an r1999 reset
-    expect(dailyDays(start, start + 3 * DAY, "europe", "r1999")).toEqual([
+    expect(dailyDays(start, start + 3 * DAY, "america", "r1999")).toEqual([
       "2026-08-13",
       "2026-08-14",
       "2026-08-15",
