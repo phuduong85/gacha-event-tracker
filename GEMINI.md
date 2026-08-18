@@ -114,11 +114,23 @@ per-reader state).
 
 ## Auto-update
 
-**Cron** (`crontab -l`), installed 2026-08-17, twice daily at 5:17am/pm:
+**Cron** (`crontab -l`), installed 2026-08-17, fixed 2026-08-18, twice daily
+at 5:17am/pm:
 
 ```
-17 5,17 * * * cd /Users/richard.yamada/selfhost/gacha-event-tracker && git pull && bun run refresh && bun run build:feed && docker compose restart event-clock >> /Users/richard.yamada/selfhost/gacha-event-tracker/refresh.log 2>&1
+17 5,17 * * * cd /Users/richard.yamada/selfhost/gacha-event-tracker && git pull && bun run refresh && bun run build:feed && (git status --porcelain -- snapshots | grep -q . && git add -- snapshots && git commit -m "chore(data): refresh source snapshots" -m "Automated fetch via the local twice-daily cron." && git push; true) && docker compose restart event-clock >> /Users/richard.yamada/selfhost/gacha-event-tracker/refresh.log 2>&1
 ```
+
+The `git status ... && git add ... && git commit ... && git push; true` part
+was missing in the version installed 2026-08-17 — it ran `refresh` and
+`build:feed` but never committed the result, so a night's worth of refreshed
+snapshots just sat as uncommitted local changes instead of building the
+"commit only when a page's bytes changed" audit trail `.github/workflows/
+refresh.yml` keeps upstream. Fixed to match that workflow's own logic:
+`git add -- snapshots` scopes the commit to snapshot changes only (never
+picks up unrelated work-in-progress files sitting in the tree), and the
+`; true` means "nothing changed" is not a failure that skips the container
+restart — only `git commit`/`git push` are conditional on it.
 
 `PATH` is set explicitly at the top of the crontab
 (`/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin`) — cron's own default PATH
@@ -128,7 +140,9 @@ a login item, so normally is) — if `refresh.log` shows the `docker compose
 restart` step failing, check `orbctl status` first. If the job never seems
 to run at all, check System Settings → Privacy & Security → Full Disk
 Access for `cron`/`/usr/sbin/cron` — macOS has been known to silently
-swallow cron jobs without it.
+swallow cron jobs without it. `git push` needs the SSH key set up
+2026-08-18 (see `## Auto-update` → Remotes below) — if pushes start failing
+again, check `ssh -T git@github.com` first.
 
 **Upstream sync** — deliberately *not* cronned, so a bad upstream change
 can't silently break a running build. Run by hand, periodically:
@@ -137,15 +151,21 @@ can't silently break a running build. Run by hand, periodically:
 git fetch upstream && git merge upstream/main
 ```
 
-**Remotes:** `origin` → `https://github.com/phuduong85/gacha-event-tracker`
+**Remotes:** `origin` → `git@github.com:phuduong85/gacha-event-tracker.git`
 (this fork — `bun run refresh` needs somewhere to commit its snapshots, and
-the cron job above pulls from it), `upstream` →
+the cron job above both pulls from and pushes to it), `upstream` →
 `https://github.com/StereotypicalCat/gacha-event-tracker` (the original,
-fetch-only, for the merge above). Pushing to `origin` needs git credentials
-this environment didn't have when the fork was set up (`gh` wasn't
-installed, no cached HTTPS token, no SSH key) — if `git push` ever fails
-with "could not read Username," that's why; `gh auth login && gh auth
-setup-git`, or add an SSH key, fixes it.
+fetch-only, for the merge above).
+
+`origin` is SSH, not HTTPS, on purpose: this Mac had no GitHub credentials
+at all when the fork was first set up 2026-08-17 (no `gh`, no cached HTTPS
+token, no SSH key), which is why the very first `git push` failed with
+"could not read Username" and every commit through that session sat local
+until 2026-08-18. Fixed with a new ed25519 keypair
+(`~/.ssh/id_ed25519`/`.pub`) added to the `phuduong85` GitHub account —
+`ssh -T git@github.com` should answer `Hi phuduong85!`. If push ever starts
+failing again with an auth error, that key (or its absence) is the first
+thing to check, not the remote URL.
 
 ## Broader homelab context
 
