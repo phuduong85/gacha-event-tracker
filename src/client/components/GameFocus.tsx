@@ -40,8 +40,12 @@ export function GameFocus({
   if (games.length < 2) return null;
 
   return (
-    <section className="border-b border-hairline px-4 py-3">
-      <div className="flex items-baseline justify-between gap-3">
+    // Below `lg:`, a horizontal scroll strip under the header — the reach a
+    // thumb already has on a phone. At `lg:` and up it becomes a standing
+    // left rail instead: a mouse can hit any game in one click, and there is
+    // finally the width to spare for a persistent list rather than a scroller.
+    <section className="border-b border-hairline px-4 py-3 lg:sticky lg:top-4 lg:w-52 lg:shrink-0 lg:border-b-0 lg:border-r lg:py-1 lg:pr-4">
+      <div className="flex items-baseline justify-between gap-3 lg:flex-col lg:items-start lg:gap-1">
         <p className="eyebrow">Focus</p>
         <button
           type="button"
@@ -56,7 +60,7 @@ export function GameFocus({
       <div
         role="group"
         aria-label="Focus on one game"
-        className="scroll-x -mx-4 mt-2 flex gap-1.5 px-4 pb-1"
+        className="scroll-x -mx-4 mt-2 flex gap-1.5 px-4 pb-1 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0 lg:pt-1"
       >
         <Chip
           label="All"
@@ -115,7 +119,7 @@ function Chip({
       onClick={onClick}
       aria-pressed={on}
       aria-label={`${ariaLabel ?? label}, ${count} outstanding`}
-      className="flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
+      className="flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors lg:w-full lg:justify-between"
       style={{
         borderColor: on ? hue : `color-mix(in srgb, ${hue} 30%, transparent)`,
         color: on ? hue : "var(--color-muted)",

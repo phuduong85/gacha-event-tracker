@@ -300,7 +300,6 @@ export function App() {
     );
   }
 
-
   return (
     <GameMetaProvider value={gameMeta}>
     <Shell>
@@ -347,172 +346,181 @@ export function App() {
         </div>
       </header>
 
-      {/* Working through games one at a time, which is how someone with four
-          of them actually plays: clear one, move on. Above everything it
-          filters, so what it is doing to the page is never a mystery. */}
-      <GameFocus
-        games={enabled}
-        focus={focus}
-        counts={perGame}
-        total={scopedTodo.length}
-        next={advanceFocus(focus, enabled)}
-        onFocus={(focusGame) => update({ focusGame })}
-        onAdvance={() => update({ focusGame: advanceFocus(focus, enabled) })}
-      />
+      {/* Below `lg:`, this is just two stacked block children in normal flow
+          — identical to before this existed. At `lg:` and up it becomes a
+          sidebar-and-content pair, so a reader with a mouse can jump between
+          games without a horizontal scroll standing between the click and the
+          chip. */}
+      <div className="lg:flex lg:items-start lg:gap-6">
+        {/* Working through games one at a time, which is how someone with
+            four of them actually plays: clear one, move on. Above everything
+            it filters, so what it is doing to the page is never a mystery. */}
+        <GameFocus
+          games={enabled}
+          focus={focus}
+          counts={perGame}
+          total={scopedTodo.length}
+          next={advanceFocus(focus, enabled)}
+          onFocus={(focusGame) => update({ focusGame })}
+          onAdvance={() => update({ focusGame: advanceFocus(focus, enabled) })}
+        />
 
-      {view === "soon" ? (
-        <>
-          <NextUp
-            row={next}
-            focused={focus === null ? null : gameMeta(focus).name}
-            onOpen={setOpenId}
-          />
+        <div className="lg:min-w-0 lg:flex-1">
+          {view === "soon" ? (
+            <>
+              <NextUp
+                row={next}
+                focused={focus === null ? null : gameMeta(focus).name}
+                onOpen={setOpenId}
+              />
 
-          {/* The chores no wiki publishes, and the only thing on this page
-              that expires tonight rather than next patch. */}
-          {/* Standing chores are a tracked-game notion: there is no routine we
-              could name on behalf of a game the reader invented, so their lanes
-              contribute repeating events here but no chore of their own. */}
-          <Dailies
-            games={(focus === null ? enabled : [focus]).filter(
-              (id) => !isCustomGameId(id),
-            )}
-            events={todo.filter(repeatsDaily).map((r) => r.event)}
-            region={prefs.region}
-            now={now}
-            daysFor={daily.daysFor}
-            onToggleDay={daily.toggleDay}
-          />
+              {/* The chores no wiki publishes, and the only thing on this page
+                  that expires tonight rather than next patch. */}
+              {/* Standing chores are a tracked-game notion: there is no routine we
+                  could name on behalf of a game the reader invented, so their lanes
+                  contribute repeating events here but no chore of their own. */}
+              <Dailies
+                games={(focus === null ? enabled : [focus]).filter(
+                  (id) => !isCustomGameId(id),
+                )}
+                events={todo.filter(repeatsDaily).map((r) => r.event)}
+                region={prefs.region}
+                now={now}
+                daysFor={daily.daysFor}
+                onToggleDay={daily.toggleDay}
+              />
 
-          {live.length > 0 && (
-            <Section
-              legend
-              title="Running now"
-              hint={
-                live.length > 1
-                  ? `next after this ends in ${formatRemaining(
-                      live[1]?.clock.msRemaining ?? 0,
-                    )}`
-                  : undefined
-              }
-              action={
-                visible.length > 1 ? (
-                  <SortControl
-                    value={prefs.sort}
-                    onChange={(sort) => update({ sort })}
-                  />
-                ) : undefined
-              }
-            >
-              {live.map((row) => (
-                <EventRow
-                  key={row.event.id}
-                  row={row}
-                  completed={isDone(row.event.id)}
-                  status={prog.progress[row.event.id]?.status}
-                  effort={prog.progress[row.event.id]?.effort}
-                  daily={dailyBadge(row)}
-                  ignored={isIgnored(row.event.id)}
-                  onRestore={(id) => ignored.toggle(id)}
-                  onOpen={setOpenId}
-                />
-              ))}
-            </Section>
+              {live.length > 0 && (
+                <Section
+                  legend
+                  title="Running now"
+                  hint={
+                    live.length > 1
+                      ? `next after this ends in ${formatRemaining(
+                          live[1]?.clock.msRemaining ?? 0,
+                        )}`
+                      : undefined
+                  }
+                  action={
+                    visible.length > 1 ? (
+                      <SortControl
+                        value={prefs.sort}
+                        onChange={(sort) => update({ sort })}
+                      />
+                    ) : undefined
+                  }
+                >
+                  {live.map((row) => (
+                    <EventRow
+                      key={row.event.id}
+                      row={row}
+                      completed={isDone(row.event.id)}
+                      status={prog.progress[row.event.id]?.status}
+                      effort={prog.progress[row.event.id]?.effort}
+                      daily={dailyBadge(row)}
+                      ignored={isIgnored(row.event.id)}
+                      onRestore={(id) => ignored.toggle(id)}
+                      onOpen={setOpenId}
+                    />
+                  ))}
+                </Section>
+              )}
+
+              {upcoming.length > 0 && (
+                <Section
+                  title="Not started yet"
+                  // The ordering control lives with the first list on the page, so
+                  // it is never missing when there is something to order.
+                  action={
+                    live.length === 0 && upcoming.length > 1 ? (
+                      <SortControl
+                        value={prefs.sort}
+                        onChange={(sort) => update({ sort })}
+                      />
+                    ) : undefined
+                  }
+                >
+                  {upcoming.map((row) => (
+                    <EventRow
+                      key={row.event.id}
+                      row={row}
+                      completed={isDone(row.event.id)}
+                      status={prog.progress[row.event.id]?.status}
+                      effort={prog.progress[row.event.id]?.effort}
+                      daily={dailyBadge(row)}
+                      ignored={isIgnored(row.event.id)}
+                      onRestore={(id) => ignored.toggle(id)}
+                      onOpen={setOpenId}
+                    />
+                  ))}
+                </Section>
+              )}
+
+              {visible.length === 0 && (
+                <p className="px-4 py-12 text-sm leading-relaxed text-muted">
+                  {focus !== null
+                    ? `Nothing running in ${gameMeta(focus).name}. Try another game, or show all of them.`
+                    : "Nothing to show. Every game is switched off, or you've finished everything and hidden completed events."}
+                </p>
+              )}
+            </>
+          ) : view === "timeline" ? (
+            <Timeline rows={visible} now={now} onOpen={setOpenId} isDone={isDone} />
+          ) : (
+            <Archive
+              rows={archived}
+              effortFor={(id) => prog.progress[id]?.effort}
+              onOpen={setOpenId}
+            />
           )}
 
-          {upcoming.length > 0 && (
-            <Section
-              title="Not started yet"
-              // The ordering control lives with the first list on the page, so
-              // it is never missing when there is something to order.
-              action={
-                live.length === 0 && upcoming.length > 1 ? (
-                  <SortControl
-                    value={prefs.sort}
-                    onChange={(sort) => update({ sort })}
-                  />
-                ) : undefined
-              }
-            >
-              {upcoming.map((row) => (
-                <EventRow
-                  key={row.event.id}
-                  row={row}
-                  completed={isDone(row.event.id)}
-                  status={prog.progress[row.event.id]?.status}
-                  effort={prog.progress[row.event.id]?.effort}
-                  daily={dailyBadge(row)}
-                  ignored={isIgnored(row.event.id)}
-                  onRestore={(id) => ignored.toggle(id)}
-                  onOpen={setOpenId}
-                />
-              ))}
-            </Section>
-          )}
+          <Controls
+            games={games}
+            prefs={prefs}
+            onToggleGame={toggleGame}
+            onUpdate={update}
+            ignoredCount={Object.keys(ignored.marks).length}
+            own={{
+              games: custom.games,
+              events: custom.events,
+              // Every lane, not just theirs: a source can miss an event in a game
+              // we do track, and that is the same job with the same form.
+              lanes: games,
+              onAddGame: custom.addGame,
+              onEditGame: custom.editGame,
+              onRemoveGame: custom.removeGame,
+              onAddEvent: custom.addEvent,
+            }}
+            onExport={() =>
+              exportProgress(prog.progress, daily.logs, ignored.marks, prefs, {
+                games: custom.games,
+                events: custom.events,
+              })
+            }
+            onImport={(file) =>
+              void importProgress(
+                file,
+                prog.merge,
+                daily.merge,
+                ignored.merge,
+                custom.merge,
+              )
+            }
+          />
 
-          {visible.length === 0 && (
-            <p className="px-4 py-12 text-sm leading-relaxed text-muted">
-              {focus !== null
-                ? `Nothing running in ${gameMeta(focus).name}. Try another game, or show all of them.`
-                : "Nothing to show. Every game is switched off, or you've finished everything and hidden completed events."}
+          {!online && (
+            <p className="border-t border-hairline px-4 py-3 text-xs leading-relaxed text-soon">
+              You're offline. These are the events last downloaded
+              {" "}
+              {formatRemaining(now - Date.parse(state.feed.generatedAt))} ago, and
+              countdowns are still running. Anything rescheduled since then won't
+              show until you reconnect.
             </p>
           )}
-        </>
-      ) : view === "timeline" ? (
-        <Timeline rows={visible} now={now} onOpen={setOpenId} isDone={isDone} />
-      ) : (
-        <Archive
-          rows={archived}
-          effortFor={(id) => prog.progress[id]?.effort}
-          onOpen={setOpenId}
-        />
-      )}
 
-      <Controls
-        games={games}
-        prefs={prefs}
-        onToggleGame={toggleGame}
-        onUpdate={update}
-        ignoredCount={Object.keys(ignored.marks).length}
-        own={{
-          games: custom.games,
-          events: custom.events,
-          // Every lane, not just theirs: a source can miss an event in a game
-          // we do track, and that is the same job with the same form.
-          lanes: games,
-          onAddGame: custom.addGame,
-          onEditGame: custom.editGame,
-          onRemoveGame: custom.removeGame,
-          onAddEvent: custom.addEvent,
-        }}
-        onExport={() =>
-          exportProgress(prog.progress, daily.logs, ignored.marks, prefs, {
-            games: custom.games,
-            events: custom.events,
-          })
-        }
-        onImport={(file) =>
-          void importProgress(
-            file,
-            prog.merge,
-            daily.merge,
-            ignored.merge,
-            custom.merge,
-          )
-        }
-      />
-
-      {!online && (
-        <p className="border-t border-hairline px-4 py-3 text-xs leading-relaxed text-soon">
-          You're offline. These are the events last downloaded
-          {" "}
-          {formatRemaining(now - Date.parse(state.feed.generatedAt))} ago, and
-          countdowns are still running. Anything rescheduled since then won't
-          show until you reconnect.
-        </p>
-      )}
-
-      <Colophon sources={state.feed.sources} now={now} />
+          <Colophon sources={state.feed.sources} now={now} />
+        </div>
+      </div>
 
       {lastIgnored !== null && (
         <Toast
@@ -575,7 +583,7 @@ export function App() {
 function Shell({ children }: { children: React.ReactNode }) {
   const update = useAppUpdate();
   return (
-    <div className="mx-auto min-h-full max-w-2xl border-hairline sm:border-x">
+    <div className="mx-auto min-h-full max-w-2xl border-hairline sm:border-x lg:max-w-4xl">
       {children}
       {update.available && (
         <UpdateNotice
