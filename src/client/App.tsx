@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchFeed, type FeedState } from "./api.ts";
+import { Archive } from "./components/Archive.tsx";
 import { Controls } from "./components/Controls.tsx";
 import { Dailies } from "./components/Dailies.tsx";
 import { GameFocus } from "./components/GameFocus.tsx";
@@ -39,7 +40,7 @@ import {
 } from "../shared/custom.ts";
 import { metaFor } from "../shared/games.ts";
 
-type View = "soon" | "timeline";
+type View = "soon" | "timeline" | "archive";
 
 /**
  * Connection state. Offline is not an error here — the service worker serves
@@ -257,6 +258,30 @@ export function App() {
   );
   const perGame = useMemo(() => countByGame(scopedTodo), [scopedTodo]);
 
+  /**
+   * Everything the reader has finished, oldest completion last — a done
+   * event's own end date stops being the interesting question the moment it
+   * is done, so this ignores `clock` entirely and orders by `progress.at`
+   * instead. Independent of `showCompleted`: that preference only ever
+   * decided whether a finished event stayed visible in the one list above,
+   * not whether it has anywhere else to be found.
+   */
+  const archived = useMemo(
+    () =>
+      allRows
+        .filter((r) => !prefs.hiddenGames.includes(r.event.game))
+        // Same lens the rest of the page reads through — GameFocus sits above
+        // every view, and a chip that visibly says "Genshin" while the
+        // Archive kept showing every game would be the lens lying.
+        .filter((r) => focus === null || r.event.game === focus)
+        .filter((r) => isDone(r.event.id))
+        .sort((a, b) => {
+          const at = (id: string) => prog.progress[id]?.at ?? "";
+          return at(b.event.id).localeCompare(at(a.event.id));
+        }),
+    [allRows, prefs.hiddenGames, focus, prog.progress],
+  );
+
   const openRow = allRows.find((r) => r.event.id === openId) ?? null;
 
   if (state.status === "loading") {
@@ -325,6 +350,7 @@ export function App() {
             [
               ["soon", "Ending soon"],
               ["timeline", "Timeline"],
+              ["archive", "Archive"],
             ] as const
           ).map(([id, label]) => (
             <button
@@ -453,8 +479,14 @@ export function App() {
             </p>
           )}
         </>
-      ) : (
+      ) : view === "timeline" ? (
         <Timeline rows={visible} now={now} onOpen={setOpenId} isDone={isDone} />
+      ) : (
+        <Archive
+          rows={archived}
+          effortFor={(id) => prog.progress[id]?.effort}
+          onOpen={setOpenId}
+        />
       )}
 
       <Controls
