@@ -72,9 +72,9 @@ export function IconUpload({
   if (games.length === 0) return null;
 
   return (
-    <div className="mt-6 border-t border-hairline pt-4">
-      <p className="eyebrow">Game icons</p>
-      <p className="mt-1.5 max-w-md text-xs leading-relaxed text-faint">
+    <>
+      <p className="eyebrow text-ink">Game icons</p>
+      <p className="mt-4">
         Shown next to a game's title wherever it appears. Password-gated —
         only someone who knows it can add or replace one.
       </p>
@@ -153,6 +153,6 @@ export function IconUpload({
           {error}
         </p>
       )}
-    </div>
+    </>
   );
 }

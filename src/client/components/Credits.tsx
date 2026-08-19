@@ -1,7 +1,7 @@
-import { useEffect } from "react";
 import { gameMeta } from "../../shared/games.ts";
 import { freshness, type SourceHealth } from "../../shared/feed.ts";
 import { formatAbsolute, formatRemaining } from "../../shared/time.ts";
+import { Modal } from "./Modal.tsx";
 
 export const REPO_URL = "https://github.com/StereotypicalCat/gacha-event-tracker";
 
@@ -103,28 +103,8 @@ export function Credits({
 
   const named = [...sites.map((s) => s.name), ...studios];
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
-      <button
-        type="button"
-        aria-label="Close credits"
-        onClick={onClose}
-        className="absolute inset-0 bg-ground/80 backdrop-blur-sm"
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Credits"
-        className="relative max-h-[88vh] w-full overflow-y-auto rounded-t-2xl border border-hairline bg-surface p-5 text-xs leading-relaxed text-faint sm:max-w-lg sm:rounded-2xl"
-      >
+    <Modal label="Credits" onClose={onClose}>
         <p className="eyebrow text-ink">Credits</p>
 
         <p className="mt-4">
@@ -246,7 +226,6 @@ export function Credits({
           </a>
           {"."}
         </p>
-      </div>
-    </div>
+    </Modal>
   );
 }

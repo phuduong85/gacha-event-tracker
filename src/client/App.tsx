@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchFeed, type FeedState } from "./api.ts";
 import { Archive } from "./components/Archive.tsx";
+import { Backup } from "./components/Backup.tsx";
 import { Controls } from "./components/Controls.tsx";
 import { Dailies } from "./components/Dailies.tsx";
 import { GameFocus } from "./components/GameFocus.tsx";
 import { EventDetail } from "./components/EventDetail.tsx";
 import { EventRow, type DailyBadge, type RowEvent } from "./components/EventRow.tsx";
+import { IconUpload } from "./components/IconUpload.tsx";
+import { Modal } from "./components/Modal.tsx";
 import { NextUp } from "./components/NextUp.tsx";
 import { Timeline } from "./components/Timeline.tsx";
 import { Credits } from "./components/Credits.tsx";
@@ -99,6 +102,8 @@ export function App() {
   const [state, setState] = useState<FeedState>({ status: "loading" });
   const [openId, setOpenId] = useState<string | null>(null);
   const [creditsOpen, setCreditsOpen] = useState(false);
+  const [backupOpen, setBackupOpen] = useState(false);
+  const [iconsOpen, setIconsOpen] = useState(false);
   // The event most recently ignored, so it can be put back without hunting for
   // a row that just disappeared.
   const [lastIgnored, setLastIgnored] = useState<{ id: string; title: string } | null>(null);
@@ -221,6 +226,13 @@ export function App() {
   const games = useMemo<LaneId[]>(
     () => [...new Set([...allRows.map((r) => r.event.game), ...custom.lanes])],
     [allRows, custom.lanes],
+  );
+
+  // Only tracked games have a GameId the upload endpoint recognises — a
+  // custom lane has nothing to upload against.
+  const iconGames = useMemo(
+    () => games.filter((id) => !isCustomGameId(id)) as GameId[],
+    [games],
   );
 
   /**
@@ -476,13 +488,13 @@ export function App() {
                 full-height divider would spend most of its length walling off
                 an empty gap. It travels with the panel as that pins. */}
             <div className="scroll-pane lg:sticky lg:top-0 lg:max-h-screen lg:overflow-y-auto lg:border-r lg:border-hairline">
-          {focusBar}
-
           <NextUp
             rows={headline}
             focused={focus === null ? null : gameMeta(focus).name}
             onOpen={setOpenId}
           />
+
+          {focusBar}
 
           {/* The chores no wiki publishes, and the only thing on this page
               that expires tonight rather than next patch. */}
@@ -615,28 +627,6 @@ export function App() {
           onRemoveGame: custom.removeGame,
           onAddEvent: custom.addEvent,
         }}
-        iconUpload={{
-          // Only tracked games have a GameId the upload endpoint
-          // recognises — a custom lane has nothing to upload against.
-          games: games.filter((id) => !isCustomGameId(id)) as GameId[],
-          iconUrl: gameIcons.iconUrl,
-          onUploaded: gameIcons.refresh,
-        }}
-        onExport={() =>
-          exportProgress(prog.progress, daily.logs, ignored.marks, prefs, {
-            games: custom.games,
-            events: custom.events,
-          })
-        }
-        onImport={(file) =>
-          void importProgress(
-            file,
-            prog.merge,
-            daily.merge,
-            ignored.merge,
-            custom.merge,
-          )
-        }
       />
 
       {!online && (
@@ -653,8 +643,26 @@ export function App() {
           the disclaimer, the "not affiliated" text, the report links —
           is one click away rather than something scrolled past on every
           visit. The freshness line it used to lead with lives by the
-          game list now instead (Freshness.tsx). */}
-      <div className="border-t border-hairline px-4 py-4 text-center">
+          game list now instead (Freshness.tsx). Icons and Backup sit beside
+          it for the same reason: settings a reader reaches for rarely, in a
+          sheet rather than taking up room in the panel every visit. */}
+      <div className="flex items-center justify-center gap-4 border-t border-hairline px-4 py-4 text-center">
+        {iconGames.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setIconsOpen(true)}
+            className="text-xs text-faint underline decoration-hairline underline-offset-2 transition-colors duration-150 hover:text-ink hover:decoration-near"
+          >
+            Icons
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => setBackupOpen(true)}
+          className="text-xs text-faint underline decoration-hairline underline-offset-2 transition-colors duration-150 hover:text-ink hover:decoration-near"
+        >
+          Backup
+        </button>
         <button
           type="button"
           onClick={() => setCreditsOpen(true)}
@@ -663,6 +671,37 @@ export function App() {
           Credits
         </button>
       </div>
+
+      {iconsOpen && (
+        <Modal label="Game icons" onClose={() => setIconsOpen(false)}>
+          <IconUpload
+            games={iconGames}
+            iconUrl={gameIcons.iconUrl}
+            onUploaded={gameIcons.refresh}
+          />
+        </Modal>
+      )}
+
+      {backupOpen && (
+        <Backup
+          onExport={() =>
+            exportProgress(prog.progress, daily.logs, ignored.marks, prefs, {
+              games: custom.games,
+              events: custom.events,
+            })
+          }
+          onImport={(file) =>
+            void importProgress(
+              file,
+              prog.merge,
+              daily.merge,
+              ignored.merge,
+              custom.merge,
+            )
+          }
+          onClose={() => setBackupOpen(false)}
+        />
+      )}
 
       {creditsOpen && (
         <Credits

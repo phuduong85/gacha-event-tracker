@@ -40,8 +40,6 @@ function render(prefs: Prefs, ignoredCount = 0): string {
         onToggleGame={() => {}}
         onUpdate={() => {}}
         ignoredCount={ignoredCount}
-        onExport={() => {}}
-        onImport={() => {}}
         own={{
           games: {},
           events: {},
@@ -51,7 +49,6 @@ function render(prefs: Prefs, ignoredCount = 0): string {
           onRemoveGame: () => ({ removed: true, blockedBy: 0 }),
           onAddEvent: () => {},
         }}
-        iconUpload={{ games: [], iconUrl: () => null, onUploaded: () => {} }}
       />
     </GameMetaProvider>,
   );

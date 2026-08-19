@@ -45,10 +45,7 @@ describe("the theme control", () => {
           onToggleGame={noop}
           onUpdate={noop}
           ignoredCount={0}
-          onExport={noop}
-          onImport={noop}
           own={own}
-          iconUpload={{ games: [], iconUrl: () => null, onUploaded: noop }}
         />
       </GameMetaProvider>,
     );

@@ -6,7 +6,6 @@ import { useGameMeta } from "../state/gameMeta.tsx";
 import type { ThemeChoice } from "../state/theme.ts";
 import type { Prefs } from "../state/usePrefs.ts";
 import { GameIcon } from "./GameIcon.tsx";
-import { IconUpload } from "./IconUpload.tsx";
 import { YourOwn } from "./YourOwn.tsx";
 
 // Asia is hidden here for now, not removed: `Region` still carries it (see
@@ -56,21 +55,15 @@ export function Controls({
   onToggleGame,
   onUpdate,
   ignoredCount,
-  onExport,
-  onImport,
   own,
-  iconUpload,
 }: {
   games: LaneId[];
   prefs: Prefs;
   onToggleGame: (g: LaneId) => void;
   onUpdate: (p: Partial<Prefs>) => void;
   ignoredCount: number;
-  onExport: () => void;
-  onImport: (file: File) => void;
   /** Everything the reader entered themselves, and the ways to change it. */
   own: React.ComponentProps<typeof YourOwn>;
-  iconUpload: React.ComponentProps<typeof IconUpload>;
 }) {
   const gameMeta = useGameMeta();
   const iconUrl = useGameIconUrl();
@@ -265,39 +258,6 @@ export function Controls({
 
         <div>
           <YourOwn {...own} />
-
-          <IconUpload {...iconUpload} />
-
-          <div className="mt-6 border-t border-hairline pt-4">
-            <p className="eyebrow">Your progress</p>
-            <p className="mt-1.5 max-w-md text-xs leading-relaxed text-faint">
-              What you've finished, and every daily you've ticked off, are saved in
-              this browser only — there is no account. Anything you added yourself is
-              in there too. Move it all to another device with a file.
-            </p>
-            <div className="mt-3 flex gap-2">
-              <button
-                type="button"
-                onClick={onExport}
-                className="rounded-lg border border-hairline px-3 py-1.5 text-xs text-muted transition-colors hover:text-ink"
-              >
-                Export
-              </button>
-              <label className="cursor-pointer rounded-lg border border-hairline px-3 py-1.5 text-xs text-muted transition-colors hover:text-ink">
-                Import
-                <input
-                  type="file"
-                  accept="application/json,.json"
-                  className="sr-only"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) onImport(file);
-                    e.target.value = "";
-                  }}
-                />
-              </label>
-            </div>
-          </div>
         </div>
       </div>
     </section>
