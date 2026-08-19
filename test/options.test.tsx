@@ -1,12 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { Controls } from "../src/client/components/Controls.tsx";
-import { GameMetaProvider } from "../src/client/state/gameMeta.tsx";
-import { metaFor } from "../src/shared/games.ts";
+import { Options } from "../src/client/components/Options.tsx";
 import type { Prefs } from "../src/client/state/usePrefs.ts";
 
 /**
- * The settings panel's view filters.
+ * The Options sheet's view filters.
  *
  * Three rows answer the same question — *what am I allowed to look at?* — and
  * they are the only place two of them can be reached from, so what they are
@@ -14,43 +12,29 @@ import type { Prefs } from "../src/client/state/usePrefs.ts";
  * invisible in a diff and obvious only to the reader it happens to.
  */
 
-const PREFS: Prefs = {
-  region: "america",
-  hiddenGames: [],
-  focusGame: null,
-  sort: "ending",
-  view: "soon",
-  timelineDayWidth: 32,
-  timelineGroup: "game",
+const PREFS: Pick<
+  Prefs,
+  | "showCompleted"
+  | "showUpcoming"
+  | "timelineSplitUpcoming"
+  | "detectDaily"
+  | "showIgnored"
+> = {
   showUpcoming: false,
   timelineSplitUpcoming: true,
   detectDaily: false,
   showCompleted: true,
   showIgnored: false,
-  theme: "dark",
-  regionConfirmed: true,
 };
 
-function render(prefs: Prefs, ignoredCount = 0): string {
+function render(prefs: typeof PREFS, ignoredCount = 0): string {
   return renderToStaticMarkup(
-    <GameMetaProvider value={(id) => metaFor(id, {})}>
-      <Controls
-        games={["genshin", "hsr"]}
-        prefs={prefs}
-        onToggleGame={() => {}}
-        onUpdate={() => {}}
-        ignoredCount={ignoredCount}
-        own={{
-          games: {},
-          events: {},
-          lanes: ["genshin", "hsr"],
-          onAddGame: () => {},
-          onEditGame: () => {},
-          onRemoveGame: () => ({ removed: true, blockedBy: 0 }),
-          onAddEvent: () => {},
-        }}
-      />
-    </GameMetaProvider>,
+    <Options
+      prefs={prefs}
+      onUpdate={() => {}}
+      ignoredCount={ignoredCount}
+      onClose={() => {}}
+    />,
   );
 }
 
@@ -61,7 +45,7 @@ function checkboxes(html: string): boolean[] {
   );
 }
 
-describe("Controls: what am I allowed to look at", () => {
+describe("Options: what am I allowed to look at", () => {
   test("the unstarted-events switch is here, in the reader's words", () => {
     // It used to be a pill in the board's own header, next to the stacking and
     // scale controls. Those two reshape what is already on the board; this one

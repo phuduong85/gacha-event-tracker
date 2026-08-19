@@ -10,9 +10,11 @@ import { EventRow, type DailyBadge, type RowEvent } from "./components/EventRow.
 import { IconUpload } from "./components/IconUpload.tsx";
 import { Modal } from "./components/Modal.tsx";
 import { NextUp } from "./components/NextUp.tsx";
+import { Options } from "./components/Options.tsx";
 import { Timeline } from "./components/Timeline.tsx";
 import { Credits } from "./components/Credits.tsx";
 import { Legend } from "./components/Legend.tsx";
+import { ThemePicker } from "./components/ThemePicker.tsx";
 import { Toast } from "./components/Toast.tsx";
 import { UpdateNotice } from "./components/UpdateNotice.tsx";
 import { KEYS } from "./state/storage.ts";
@@ -104,6 +106,8 @@ export function App() {
   const [creditsOpen, setCreditsOpen] = useState(false);
   const [backupOpen, setBackupOpen] = useState(false);
   const [iconsOpen, setIconsOpen] = useState(false);
+  const [themeOpen, setThemeOpen] = useState(false);
+  const [optionsOpen, setOptionsOpen] = useState(false);
   // The event most recently ignored, so it can be put back without hunting for
   // a row that just disappeared.
   const [lastIgnored, setLastIgnored] = useState<{ id: string; title: string } | null>(null);
@@ -614,8 +618,6 @@ export function App() {
         games={games}
         prefs={prefs}
         onToggleGame={toggleGame}
-        onUpdate={update}
-        ignoredCount={Object.keys(ignored.marks).length}
         own={{
           games: custom.games,
           events: custom.events,
@@ -643,10 +645,11 @@ export function App() {
           the disclaimer, the "not affiliated" text, the report links —
           is one click away rather than something scrolled past on every
           visit. The freshness line it used to lead with lives by the
-          game list now instead (Freshness.tsx). Icons and Backup sit beside
-          it for the same reason: settings a reader reaches for rarely, in a
-          sheet rather than taking up room in the panel every visit. */}
-      <div className="flex items-center justify-center gap-4 border-t border-hairline px-4 py-4 text-center">
+          game list now instead (Freshness.tsx). Icons, Backup, Theme and
+          Options sit beside it for the same reason: settings a reader
+          reaches for rarely, in a sheet rather than taking up room in the
+          panel every visit. */}
+      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-t border-hairline px-4 py-4 text-center">
         {iconGames.length > 0 && (
           <button
             type="button"
@@ -656,12 +659,43 @@ export function App() {
             Icons
           </button>
         )}
+        {/* Only "america" is offered (see Controls' old note on Asia), so
+            this is a pill rather than a group of alternatives — pressed
+            already, and here mainly to confirm the region for a reader
+            `guessRegion` placed in "asia" rather than to offer a real
+            choice. */}
+        <button
+          type="button"
+          onClick={() => update({ region: "america", regionConfirmed: true })}
+          aria-pressed={prefs.region === "america"}
+          className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+            prefs.region === "america"
+              ? "border-ink/70 text-ink"
+              : "border-hairline text-faint hover:text-muted"
+          }`}
+        >
+          🇺🇸 America
+        </button>
         <button
           type="button"
           onClick={() => setBackupOpen(true)}
           className="text-xs text-faint underline decoration-hairline underline-offset-2 transition-colors duration-150 hover:text-ink hover:decoration-near"
         >
           Backup
+        </button>
+        <button
+          type="button"
+          onClick={() => setThemeOpen(true)}
+          className="text-xs text-faint underline decoration-hairline underline-offset-2 transition-colors duration-150 hover:text-ink hover:decoration-near"
+        >
+          Theme
+        </button>
+        <button
+          type="button"
+          onClick={() => setOptionsOpen(true)}
+          className="text-xs text-faint underline decoration-hairline underline-offset-2 transition-colors duration-150 hover:text-ink hover:decoration-near"
+        >
+          Options
         </button>
         <button
           type="button"
@@ -680,6 +714,23 @@ export function App() {
             onUploaded={gameIcons.refresh}
           />
         </Modal>
+      )}
+
+      {themeOpen && (
+        <ThemePicker
+          theme={prefs.theme}
+          onUpdate={update}
+          onClose={() => setThemeOpen(false)}
+        />
+      )}
+
+      {optionsOpen && (
+        <Options
+          prefs={prefs}
+          onUpdate={update}
+          ignoredCount={Object.keys(ignored.marks).length}
+          onClose={() => setOptionsOpen(false)}
+        />
       )}
 
       {backupOpen && (
