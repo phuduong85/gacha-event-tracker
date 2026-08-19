@@ -65,7 +65,13 @@ export function GameFocus({
     // thumb already has on a phone. At `lg:` and up it becomes a standing
     // left rail instead: a mouse can hit any game in one click, and there is
     // finally the width to spare for a persistent list rather than a scroller.
-    <section className="border-b border-hairline px-4 py-3 lg:sticky lg:top-4 lg:w-52 lg:shrink-0 lg:border-b-0 lg:border-r lg:py-1 lg:pr-4">
+    //
+    // No sticky/width/border of its own any more — this sits inside App's
+    // `<aside>`, which already owns those for the whole sidebar column (this,
+    // NextUp, and Dailies together). Claiming them here too nested a second
+    // sticky element inside an already-sticky, scrolling parent, which is
+    // what overlapped this onto NextUp below it.
+    <section className="border-b border-hairline px-4 py-3">
       {hasChoice && (
         <>
           <div className="flex items-baseline justify-between gap-3 lg:flex-col lg:items-start lg:gap-1">
