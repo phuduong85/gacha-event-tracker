@@ -148,6 +148,12 @@ export interface Prefs {
   theme: ThemeChoice;
   /** False until the reader confirms or changes the guessed region. */
   regionConfirmed: boolean;
+  /**
+   * Whether the "Next to expire" panel is expanded. A reader who does not
+   * lean on the headline deadline can collapse it down to its own heading,
+   * and the answer is remembered rather than asked again every visit.
+   */
+  showNextUp: boolean;
 }
 
 function defaults(): Prefs {
@@ -166,6 +172,7 @@ function defaults(): Prefs {
     showIgnored: false,
     theme: DEFAULT_THEME_CHOICE,
     regionConfirmed: false,
+    showNextUp: true,
   };
 }
 

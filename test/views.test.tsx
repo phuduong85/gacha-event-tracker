@@ -109,7 +109,7 @@ describe("NextUp", () => {
   test("leads with the closest deadline and lists the ones behind it", () => {
     // A reader asked for the next three, and was right that one is too few:
     // finishing the headline event left the panel pointing at nothing.
-    const html = render(<NextUp rows={rows} focused={null} onOpen={() => {}} />);
+    const html = render(<NextUp rows={rows} focused={null} onOpen={() => {}} collapsed={false} onToggleCollapsed={() => {}} />);
     expect(html).toContain("Closing Ceremony");
     expect(html).toContain("Second Wind");
     expect(html).toContain("Third Rail");
@@ -120,21 +120,21 @@ describe("NextUp", () => {
 
   test("one deadline is a headline with nothing behind it", () => {
     const html = render(
-      <NextUp rows={rows.slice(0, 1)} focused={null} onOpen={() => {}} />,
+      <NextUp rows={rows.slice(0, 1)} focused={null} onOpen={() => {}} collapsed={false} onToggleCollapsed={() => {}} />,
     );
     expect(html).toContain("Closing Ceremony");
     expect(html).not.toContain(">Then<");
   });
 
   test("no deadlines says so rather than rendering an empty panel", () => {
-    const html = render(<NextUp rows={[]} focused={null} onOpen={() => {}} />);
+    const html = render(<NextUp rows={[]} focused={null} onOpen={() => {}} collapsed={false} onToggleCollapsed={() => {}} />);
     expect(html).toContain("Nothing running");
   });
 
   test("an unannounced end is never dressed up as a countdown", () => {
     // The rule the whole product rests on, at the largest type size it has.
     const html = render(
-      <NextUp rows={[row("Unknown End", "wuwa", null)]} focused={null} onOpen={() => {}} />,
+      <NextUp rows={[row("Unknown End", "wuwa", null)]} focused={null} onOpen={() => {}} collapsed={false} onToggleCollapsed={() => {}} />,
     );
     expect(html).toContain("unknown");
     expect(html).toContain("no end date");

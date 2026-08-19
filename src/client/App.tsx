@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchFeed, type FeedState } from "./api.ts";
 import { Archive } from "./components/Archive.tsx";
 import { Backup } from "./components/Backup.tsx";
@@ -101,6 +101,37 @@ function useNow(intervalMs = 1000): number {
   return now;
 }
 
+/**
+ * An element's own rendered height, kept live.
+ *
+ * What the sticky header and the sticky "Running now" heading below it both
+ * need to offset by — the header's copy wraps at some widths and the sort
+ * control changes what fits on the heading's own row, so a fixed pixel guess
+ * would drift out of sync with the very thing it is supposed to sit under.
+ */
+function useElementHeight<T extends HTMLElement>(): [(node: T | null) => void, number] {
+  const [height, setHeight] = useState(0);
+  const observer = useRef<ResizeObserver | null>(null);
+
+  // A callback ref rather than `useRef` + `useEffect(, [])`: the header this
+  // measures does not exist yet on the very first commit (the "Loading
+  // events…" placeholder renders before it), and an effect with an empty
+  // dependency array only ever runs once — against that first, header-less
+  // commit — and never again once the real element mounts. A callback ref
+  // fires again on every mount, which a `RefObject` alone does not.
+  const ref = useCallback((node: T | null) => {
+    observer.current?.disconnect();
+    if (node === null) return;
+    // The padding is the whole reason this is measured — it is what pushes
+    // the sticky panels below the header down — so this reads the border
+    // box, not `entry.contentRect`, which excludes padding and border.
+    observer.current = new ResizeObserver(() => setHeight(node.getBoundingClientRect().height));
+    observer.current.observe(node);
+  }, []);
+
+  return [ref, height];
+}
+
 export function App() {
   const [state, setState] = useState<FeedState>({ status: "loading" });
   const [openId, setOpenId] = useState<string | null>(null);
@@ -117,6 +148,7 @@ export function App() {
   const [lastIgnored, setLastIgnored] = useState<{ id: string; title: string } | null>(null);
   const now = useNow();
   const online = useOnline();
+  const [headerRef, headerHeight] = useElementHeight<HTMLElement>();
   const { prefs, update, toggleGame } = usePrefs();
   // Their answer from the first run, or their last tap on the tabs. Reading it
   // from `prefs` is what stops a reload putting a timeline reader back on the
@@ -430,7 +462,10 @@ export function App() {
     <GameMetaProvider value={gameMeta}>
     <GameIconProvider value={gameIcons.iconUrl}>
     <Shell>
-      <header className="flex items-center justify-between gap-4 border-b border-hairline px-4 pb-3 pt-5">
+      <header
+        ref={headerRef}
+        className="sticky top-0 z-30 flex items-center justify-between gap-4 border-b border-hairline bg-ground px-4 pb-3 pt-5"
+      >
         <div>
           <p className="font-display text-[0.9375rem] font-bold tracking-[0.02em] lg:text-lg">
             EVENT<span className="text-near">CLOCK</span>
@@ -495,11 +530,16 @@ export function App() {
                 and the dailies are short and the list beside them is long, so a
                 full-height divider would spend most of its length walling off
                 an empty gap. It travels with the panel as that pins. */}
-            <div className="scroll-pane lg:sticky lg:top-0 lg:max-h-screen lg:overflow-y-auto lg:border-r lg:border-hairline">
+            <div
+              className="scroll-pane lg:sticky lg:overflow-y-auto lg:border-r lg:border-hairline"
+              style={{ top: headerHeight, maxHeight: `calc(100vh - ${headerHeight}px)` }}
+            >
           <NextUp
             rows={headline}
             focused={focus === null ? null : gameMeta(focus).name}
             onOpen={setOpenId}
+            collapsed={!prefs.showNextUp}
+            onToggleCollapsed={() => update({ showNextUp: !prefs.showNextUp })}
           />
 
           {focusBar}
@@ -510,6 +550,7 @@ export function App() {
           {live.length > 0 && (
             <Section
               legend
+              stickyTop={headerHeight}
               title="Running now"
               hint={
                 live.length > 1
@@ -880,6 +921,7 @@ function Section({
   legend,
   action,
   children,
+  stickyTop,
 }: {
   title: string;
   hint?: string | undefined;
@@ -887,14 +929,38 @@ function Section({
   /** A control that belongs to this section, e.g. how it is ordered. */
   action?: React.ReactNode | undefined;
   children: React.ReactNode;
+  /**
+   * Pins the heading (and the legend, right below it) under the sticky app
+   * header instead of letting them scroll away with the rows they explain —
+   * "Running now" is the one section long enough that the sort control and
+   * the legend are worth still having on screen halfway down the list.
+   * Undefined leaves the section in normal flow, as "Not started yet" does.
+   */
+  stickyTop?: number | undefined;
 }) {
+  const [headRef, headHeight] = useElementHeight<HTMLDivElement>();
+  const sticky = stickyTop !== undefined;
+
   return (
     <section className="pt-5">
-      <div className="flex items-baseline justify-between gap-3 px-4 pb-2">
+      <div
+        ref={headRef}
+        className={`flex items-baseline justify-between gap-3 px-4 pb-2 ${
+          sticky ? "lg:sticky lg:z-20 lg:bg-ground" : ""
+        }`}
+        style={sticky ? { top: stickyTop } : undefined}
+      >
         <h2 className="eyebrow">{title}</h2>
         {action ?? (hint !== undefined && <p className="text-xs text-faint">{hint}</p>)}
       </div>
-      {legend === true && <Legend />}
+      {legend === true && (
+        <div
+          className={sticky ? "lg:sticky lg:z-20 lg:border-b lg:border-hairline lg:bg-ground" : undefined}
+          style={sticky ? { top: (stickyTop ?? 0) + headHeight } : undefined}
+        >
+          <Legend />
+        </div>
+      )}
       {children}
     </section>
   );
