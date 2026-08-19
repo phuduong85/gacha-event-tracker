@@ -1,4 +1,6 @@
 import { isCustomEventId, type DisplayEvent } from "../../shared/custom.ts";
+import type { GameId } from "../../shared/schema.ts";
+import { useGameIconUrl } from "../state/gameIcon.tsx";
 import { useGameMeta } from "../state/gameMeta.tsx";
 import {
   formatRemaining,
@@ -45,8 +47,10 @@ export function EventRow({
   onOpen,
 }: EventRowProps) {
   const gameMeta = useGameMeta();
+  const iconUrl = useGameIconUrl();
   const { event, clock } = row;
   const game = gameMeta(event.game);
+  const icon = iconUrl(event.game as GameId);
   const heat = URGENCY_COLOR[clock.urgency];
 
   const caption = windowCaption(clock, Date.now());
@@ -62,11 +66,31 @@ export function EventRow({
 
   return (
     <li
-      className={`event-row relative border-b border-hairline/70 ${
+      className={`event-row relative overflow-hidden border-b border-hairline/70 ${
         completed ? "is-complete" : ""
       }`}
       style={{ ["--hue" as string]: game.hue }}
     >
+      {/* The game's own icon, immense and faded, on the side the countdown
+          already draws the eye to — identity without a second glance at the
+          eyebrow label. Masked into the row rather than cropped square, so it
+          reads as a watermark, not a second logo competing with the title. */}
+      {icon !== null && (
+        <img
+          src={icon}
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 right-0 z-0 w-28 object-cover opacity-[0.14]"
+          style={{
+            maskImage: "linear-gradient(to right, transparent, black 55%)",
+            WebkitMaskImage: "linear-gradient(to right, transparent, black 55%)",
+          }}
+          onError={(e) => {
+            e.currentTarget.style.display = "none";
+          }}
+        />
+      )}
+
       {/* The whole row opens the event. A single full-bleed target gives a
           generous tap area on mobile and one unambiguous hover region — the
           content above it is pointer-transparent so clicks fall through. */}

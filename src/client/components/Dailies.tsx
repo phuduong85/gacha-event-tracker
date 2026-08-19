@@ -98,11 +98,11 @@ export function Dailies({
   const mixed = new Set(items.map((i) => i.resetsIn)).size > 1;
 
   return (
-    <section className="relative border-b border-hairline px-4 py-4">
+    <div className="relative">
       {burst > 0 && <Fireworks key={burst} />}
 
       <div className="relative flex items-baseline justify-between gap-3">
-        <h2 className="eyebrow">
+        <h2 className="eyebrow text-ink">
           Today's dailies · {complete}/{total}
         </h2>
         <p className="tnum text-[0.6875rem] text-faint">
@@ -146,7 +146,7 @@ export function Dailies({
           ? "All done. Nothing else expires tonight."
           : `${waiting(total - complete)} still waiting on you today.`}
       </p>
-    </section>
+    </div>
   );
 }
 

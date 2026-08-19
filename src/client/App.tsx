@@ -111,6 +111,7 @@ export function App() {
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [gamesOpen, setGamesOpen] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
+  const [dailiesOpen, setDailiesOpen] = useState(false);
   // The event most recently ignored, so it can be put back without hunting for
   // a row that just disappeared.
   const [lastIgnored, setLastIgnored] = useState<{ id: string; title: string } | null>(null);
@@ -502,22 +503,6 @@ export function App() {
           />
 
           {focusBar}
-
-          {/* The chores no wiki publishes, and the only thing on this page
-              that expires tonight rather than next patch. */}
-          {/* Standing chores are a tracked-game notion: there is no routine we
-              could name on behalf of a game the reader invented, so their lanes
-              contribute repeating events here but no chore of their own. */}
-          <Dailies
-            games={(focus === null ? enabled : [focus]).filter(
-              (id) => !isCustomGameId(id),
-            )}
-            events={todo.filter(repeatsDaily).map((r) => r.event)}
-            region={prefs.region}
-            now={now}
-            daysFor={daily.daysFor}
-            onToggleDay={daily.toggleDay}
-          />
             </div>
           </aside>
 
@@ -652,6 +637,13 @@ export function App() {
         >
           Games
         </button>
+        <button
+          type="button"
+          onClick={() => setDailiesOpen(true)}
+          className="text-xs text-faint underline decoration-hairline underline-offset-2 transition-colors duration-150 hover:text-ink hover:decoration-near"
+        >
+          Dailies
+        </button>
         {/* Only "america" is offered (see Games.tsx's old note on Asia), so
             this is a pill rather than a group of alternatives — pressed
             already, and here mainly to confirm the region for a reader
@@ -723,6 +715,26 @@ export function App() {
           onToggleGame={toggleGame}
           onClose={() => setGamesOpen(false)}
         />
+      )}
+
+      {dailiesOpen && (
+        <Modal label="Dailies" onClose={() => setDailiesOpen(false)}>
+          {/* The chores no wiki publishes, and the only thing on this page
+              that expires tonight rather than next patch. */}
+          {/* Standing chores are a tracked-game notion: there is no routine we
+              could name on behalf of a game the reader invented, so their lanes
+              contribute repeating events here but no chore of their own. */}
+          <Dailies
+            games={(focus === null ? enabled : [focus]).filter(
+              (id) => !isCustomGameId(id),
+            )}
+            events={todo.filter(repeatsDaily).map((r) => r.event)}
+            region={prefs.region}
+            now={now}
+            daysFor={daily.daysFor}
+            onToggleDay={daily.toggleDay}
+          />
+        </Modal>
       )}
 
       {customOpen && (
