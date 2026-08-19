@@ -336,3 +336,64 @@ describe("validRecords — the import gate", () => {
     expect(kept).toEqual({});
   });
 });
+
+describe("retiring a game, a source or a page", () => {
+  /**
+   * The reader's own events are the only copy that exists — no server has ever
+   * seen them (AGENTS.md § Three constraints). We retire things routinely: a
+   * source moves, a page goes stale, a game shuts down. None of that may cost
+   * them a row they typed.
+   *
+   * The load path is what makes this sharp rather than theoretical.
+   * `useCustom` reads through `validRecords`, which **drops** a record that
+   * fails its schema, and the surviving set is what the next write persists.
+   * So a record that stops parsing is not hidden until someone fixes it — it is
+   * deleted from the device, permanently, by the act of opening the app.
+   *
+   * `CustomEvent.game` is therefore `z.string()` and not `GameId`, which reads
+   * like missing validation and is the load-bearing decision here. Narrowing it
+   * to the enum would look like a tightening and would arm every future game
+   * removal to erase reader data on next launch.
+   */
+  const retired = "a-game-we-no-longer-track";
+
+  test("a game id we retire is not one the enum still holds", () => {
+    // Guards the premise: if this ever became a real id the test below stops
+    // testing anything.
+    expect(GameId.options).not.toContain(retired as never);
+  });
+
+  test("keeps an event the reader filed under a game we later dropped", () => {
+    const orphaned = { ...ownEvent(), game: retired };
+    // Parses on its own...
+    expect(CustomEvent.safeParse(orphaned).success).toBe(true);
+    // ...and survives the gate that decides what stays on the device.
+    const kept = validRecords({ [orphaned.id]: orphaned }, CustomEvent);
+    expect(kept[orphaned.id]).toBeDefined();
+    expect(kept[orphaned.id]?.game).toBe(retired);
+  });
+
+  test("keeps the neighbours of an event that genuinely is unreadable", () => {
+    // The drop is per record and always has been; this pins that a retired
+    // lane is not what triggers it, and that one bad row is not contagious.
+    const good = ownEvent();
+    const kept = validRecords(
+      { [good.id]: good, "myevent:broken": { id: "myevent:broken" } },
+      CustomEvent,
+    );
+    expect(Object.keys(kept)).toEqual([good.id]);
+  });
+
+  test("still names the lane, so a retired game shows a row rather than nothing", () => {
+    const meta = metaFor(retired, {});
+    expect(meta.name).toBe("Unknown game");
+    expect(meta.hue).toMatch(/^#[0-9A-Fa-f]{6}$/);
+  });
+
+  test("still clocks it, so the countdown does not need the game to exist", () => {
+    const orphaned = CustomEvent.parse({ ...ownEvent(), game: retired });
+    const c = clockFor(asDisplayEvent(orphaned), "america", Date.parse("2026-08-25T00:00:00.000Z"));
+    expect(c.live).toBe(true);
+    expect(c.endsMs).not.toBeNull();
+  });
+});

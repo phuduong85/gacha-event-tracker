@@ -69,7 +69,19 @@ export type CustomGame = z.infer<typeof CustomGame>;
 export const CustomEvent = z
   .object({
     id: CustomEventId,
-    /** A tracked game, or one of theirs — a source can miss an event too. */
+    /**
+     * A tracked game, or one of theirs — a source can miss an event too.
+     *
+     * **`z.string()` and not `GameId`, deliberately.** We retire games, sources
+     * and pages routinely, and this field is the only thing standing between
+     * that and a reader losing a row they typed: `useCustom` reads through
+     * `validRecords`, which drops a record that fails this schema, and the
+     * survivors are what the next write persists. Narrowing this to the enum
+     * would read as a tightening and would arm every future removal to erase
+     * reader data on next launch — silently, with no server-side recovery,
+     * exactly as § Event IDs are localStorage keys describes for `slugify`.
+     * `metaFor` is total so an id with no game behind it still renders.
+     */
     game: z.string().min(1),
     title: z.string().min(1).max(200),
     type: EventType,

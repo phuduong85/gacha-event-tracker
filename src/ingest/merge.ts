@@ -124,6 +124,18 @@ function isSameEvent(
 ): boolean {
   if (a.id === b.id) return true;
 
+  // Near-match fusion reconciles two *sources* describing one event under
+  // different titles. Within one source it has no such job to do: the page has
+  // already told us these are two rows, the parser has already dropped repeats
+  // of the same id, and fusing them here overrules a distinction the publisher
+  // made on purpose. Game8's Umamusume page is the case that surfaced it — its
+  // `3 Star Guaranteed 1.5 Anniversary Scout (Character)` and `(Support)` are
+  // two concurrent banners whose titles differ by one parenthetical, which
+  // scores far above any workable threshold and starts on the same day. Fusing
+  // them dropped a real banner off the calendar with nothing reporting it,
+  // which is the silent drop this codebase treats as the dangerous failure.
+  if (a.sourceId === b.sourceId) return false;
+
   // Overlap alone misses a source that appends a qualifier: "Bedazzling
   // Dawnstar" vs "Bedazzling Dawnstar Sign-In" scores 0.67, well under any
   // safe threshold, yet is plainly one event.

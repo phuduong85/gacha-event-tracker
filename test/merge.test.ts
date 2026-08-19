@@ -191,3 +191,50 @@ describe("merging two sources for one game", () => {
     expect(conflicts[0]?.field).toBe("endsAt");
   });
 });
+
+describe("near matches within one source", () => {
+  test("two rows from one page stay two events", () => {
+    // The page has already told us these are two things, and the parser has
+    // already dropped repeats of the same id — so fusing them here overrules a
+    // distinction the publisher made on purpose. Game8's Umamusume banner list
+    // is the real case: two concurrent banners whose titles differ by one
+    // parenthetical and which start on the same day. Fusing them dropped a live
+    // banner off the calendar with nothing reporting it.
+    const character = event({
+      id: "uma:3-star-guaranteed-1-5-anniversary-scout-character:2026-07-22",
+      game: "uma",
+      title: "3 Star Guaranteed 1.5 Anniversary Scout (Character)",
+      sourceId: "uma-game8-events",
+    });
+    const support = event({
+      id: "uma:3-star-guaranteed-1-5-anniversary-scout-support:2026-07-22",
+      game: "uma",
+      title: "3 Star Guaranteed 1.5 Anniversary Scout (Support)",
+      sourceId: "uma-game8-events",
+    });
+
+    const merged = mergeEvents([[character, support]]);
+    expect(merged.events).toHaveLength(2);
+    expect(merged.conflicts).toHaveLength(0);
+  });
+
+  test("the same id twice from one source is still one event", () => {
+    // The exception that keeps the rule safe: an identical id is the same row
+    // seen twice, whatever it is called.
+    const once = event({ sourceId: "source-a" });
+    const twice = event({ sourceId: "source-a", title: "Test Event (again)" });
+    expect(mergeEvents([[once, twice]]).events).toHaveLength(1);
+  });
+
+  test("near matches across two sources still fuse", () => {
+    // The behaviour this rule narrows, not removes: reconciling two sources
+    // that describe one event under different titles is the whole job.
+    const a = event({ title: "Bedazzling Dawnstar", sourceId: "source-a" });
+    const b = event({
+      id: "genshin:bedazzling-dawnstar-sign-in:2026-08-12",
+      title: "Bedazzling Dawnstar Sign-In",
+      sourceId: "source-b",
+    });
+    expect(mergeEvents([[a], [b]]).events).toHaveLength(1);
+  });
+});

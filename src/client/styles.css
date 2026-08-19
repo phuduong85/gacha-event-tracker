@@ -9,6 +9,10 @@
  * Keeping them separate is what lets one glance answer "whose event is this?"
  * and "how long have I got?" at the same time. Never colour an urgency element
  * with a game hue, or vice versa.
+ *
+ * Heat is tokens, so it is re-struck per theme below. Hue is data and cannot be
+ * — it comes from games.ts and from the reader's own games — so it is read for
+ * the theme in state/theme.ts instead, on its way to the elements that apply it.
  */
 @theme {
   /* Ground is deep blue-black, not neutral near-black — the whole surface
@@ -18,8 +22,20 @@
   --color-raised: #232739;
   --color-hairline: #2c3145;
   --color-ink: #e9ebf3;
+  /* The far end of `ink`: what a solid ink button goes to under the cursor.
+     A token rather than `white` because on a light ground ink is nearly black,
+     and "brighter" there means darker. */
+  --color-ink-strong: #ffffff;
   --color-muted: #888fa6;
   --color-faint: #5a6178;
+  /* The veil behind a modal. Carries its own alpha rather than being written
+     `bg-ground/80` at the call site, because the two themes need different
+     amounts of it — see the light block. */
+  --color-scrim: rgb(18 20 28 / 0.8);
+  /* Where the page's light comes from: the top of the body gradient. Lighter
+     than the ground in the dark theme, and lighter still in the light one, so
+     the surface reads as lit from above in both. */
+  --color-glow: #1a1e2c;
 
   /* Heat ramp: monotonic in salience, dim → blue → amber → red. */
   --color-calm: #55607f;
@@ -31,38 +47,64 @@
   --font-body: "Public Sans", ui-sans-serif, system-ui, sans-serif;
 }
 
+/*
+ * Dark is what this app is, and what it stays unless a reader says otherwise:
+ * the tokens above are the defaults, and light is an override that only applies
+ * once `data-theme="light"` is on the root. Nothing here reads
+ * `prefers-color-scheme` — a reader whose laptop is in light mode has said
+ * something about their laptop, not about this page, and the answer we act on
+ * is the one they gave us (`prefs.theme`, resolved in state/theme.ts).
+ *
+ * Every value below is a *token* override. No component knows which theme it is
+ * in; they all name `ink`, `hairline`, `soon`, and get an answer that suits the
+ * ground they are standing on. The two exceptions, both unavoidable, are the
+ * game hues — reader data, adjusted in state/theme.ts — and the pre-paint
+ * script in index.html.
+ */
 :root {
   color-scheme: dark;
-  /* Not a Tailwind theme token — nothing generates a utility from it, it only
-     feeds the gradient highlight below — so it lives here rather than in
-     `@theme`. */
-  --ground-highlight: #1a1e2c;
 }
 
 /*
  * Light palette. Same token names as the dark set in `@theme` above, so every
  * utility class and every `var(--color-*)` reference in this file resolves
  * here instead without knowing a second theme exists. Applied by `useTheme`
- * (state/useTheme.ts), which resolves "system" against prefers-color-scheme
+ * (state/theme.ts), which resolves "system" against prefers-color-scheme
  * and keeps `data-theme` in sync with it — so this is the only place the
  * light values need to be written down.
  */
 :root[data-theme="light"] {
   color-scheme: light;
-  --color-ground: #f3f4f9;
+
+  /* Paper under daylight, not white: the same cool blue cast as the dark
+     ground, so the heat ramp and the game hues still sit on a neutral that is
+     slightly blue rather than fighting a pure grey. Cards go *up* to white
+     from here, which is the one place the ladder inverts — `raised` is a tint
+     rather than a lift, because on a light ground the way to mark a surface as
+     interactive is to shade it, not to brighten it. */
+  --color-ground: #edf0f7;
   --color-surface: #ffffff;
-  --color-raised: #e9ebf3;
-  --color-hairline: #d6d9e6;
-  --color-ink: #171922;
-  --color-muted: #565d75;
-  --color-faint: #868da6;
+  --color-raised: #dfe4f0;
+  --color-hairline: #c9d1e2;
+  --color-ink: #151824;
+  --color-ink-strong: #000000;
+  --color-muted: #535b73;
+  --color-faint: #767e94;
+  /* Darker than the ground and much thinner than the dark theme's veil: a
+     light scrim over a light page states nothing, and 80% of it would wash the
+     page out rather than push it back. */
+  --color-scrim: rgb(26 31 48 / 0.42);
+  --color-glow: #ffffff;
 
-  --color-calm: #737ba0;
-  --color-near: #3266d6;
-  --color-soon: #a5720a;
-  --color-critical: #d92952;
-
-  --ground-highlight: #ffffff;
+  /* The ramp again, re-struck for a light ground. Every step keeps its meaning
+     and its ordering; what changes is that each one is now dark enough to read
+     as small text on `ground` (≥ 4.5:1), which the dark theme's values are
+     nowhere near — `soon` in particular is 1.9:1 on paper, and urgency the
+     reader cannot read is not urgency. */
+  --color-calm: #8a92a8;
+  --color-near: #2b62c6;
+  --color-soon: #8a6008;
+  --color-critical: #c81e3c;
 }
 
 html,
@@ -81,10 +123,34 @@ body {
      rather than a flat fill. Subtle enough not to fight the data. */
   background-image: radial-gradient(
     120% 70% at 50% -10%,
-    var(--ground-highlight) 0%,
+    var(--color-glow) 0%,
     var(--color-ground) 60%
   );
   background-attachment: fixed;
+}
+
+/*
+ * Anything you can act on says so under the pointer.
+ *
+ * A `<button>` defaults to `cursor: default`, so the app's own controls — a
+ * daily chip, the headline deadline, a settings pill — read as text until you
+ * click one and discover otherwise. Sixty-odd of them, which is why this is a
+ * rule rather than a class added at each call site: the ones that got it were
+ * the ones somebody noticed, and the point of an affordance is that it holds
+ * everywhere without being noticed.
+ *
+ * In `@layer base` on purpose. Utilities beat it, so a control that means
+ * something else by the pointer keeps saying it: `cursor-not-allowed` on a
+ * disabled zoom step, `cursor-default` on a day the checklist cannot tick yet.
+ * `:not(:disabled)` covers the same ground for anything that never bothered.
+ */
+@layer base {
+  button:not(:disabled),
+  [role="tab"],
+  input[type="checkbox"]:not(:disabled),
+  label:has(> input[type="checkbox"]:not(:disabled)) {
+    cursor: pointer;
+  }
 }
 
 /* Countdowns tick. Tabular figures keep them from reflowing every second. */
@@ -237,6 +303,53 @@ body {
     filter 130ms ease-out;
 }
 
+/* ---- Chips coloured by a game hue --------------------------------------- */
+/*
+ * Today's dailies and the focus bar are the same object twice: a pill carrying
+ * a game's colour, pressed or not, that you tap. Both were saying none of that
+ * — the pointer stayed an arrow and nothing happened under it, so two strips of
+ * controls read as rows of status badges.
+ *
+ * The hover has to be drawn from what the components do *not* own. A chip's
+ * border, ink and wash are mixed from the game's hue, which is data rather than
+ * a token and therefore arrives as an inline style — and no rule here can
+ * override one of those. So a ring in the same hue, a one-pixel lift and the
+ * label coming up to full ink carry it instead. `--hue` is the one thing a chip
+ * has to hand over; `aria-pressed` it was already saying out loud.
+ *
+ * The label only brightens on a chip that is *not* pressed. On a pressed one
+ * the ink already *is* the game's hue, and overriding it with `ink` would trade
+ * the one thing saying which game for a hover state.
+ */
+.hue-chip {
+  transition:
+    border-color 130ms ease-out,
+    background-color 130ms ease-out,
+    color 130ms ease-out,
+    box-shadow 130ms ease-out,
+    transform 120ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+.hue-chip-label {
+  transition: color 130ms ease-out;
+}
+
+@media (hover: hover) {
+  .hue-chip:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--hue) 45%, transparent);
+  }
+  .hue-chip[aria-pressed="false"]:hover .hue-chip-label {
+    color: var(--color-ink);
+  }
+}
+
+/* Press feedback on both mouse and touch, as the event row has. */
+.hue-chip:active {
+  transform: scale(0.96);
+  transition-duration: 60ms;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .event-row,
   .row-rail,
@@ -244,13 +357,17 @@ body {
   .row-count,
   .row-summary,
   .row-check,
-  .meter-tick {
+  .meter-tick,
+  .hue-chip,
+  .hue-chip-label {
     transition: none;
   }
   .row-check:hover,
   .row-check:active,
   .event-row:hover .row-open,
-  .event-row:hover .row-rail {
+  .event-row:hover .row-rail,
+  .hue-chip:hover,
+  .hue-chip:active {
     transform: none;
   }
 }
@@ -317,6 +434,17 @@ body {
 /* Horizontal scrollers keep their gutter but hide the bar chrome. */
 .scroll-x {
   overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-hairline) transparent;
+}
+
+/*
+ * Panes that scroll in both directions — the timeline board, and the pinned
+ * deadline rail on a wide screen. Same quiet bar chrome as `.scroll-x`, but the
+ * overflow itself is left to the element, because both of those only become
+ * scrollers at a breakpoint.
+ */
+.scroll-pane {
   scrollbar-width: thin;
   scrollbar-color: var(--color-hairline) transparent;
 }

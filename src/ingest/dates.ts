@@ -34,9 +34,12 @@ function iso(
   d: number,
   hh = 0,
   mm = 0,
+  ss = 0,
 ): string | null {
-  if (m < 1 || m > 12 || d < 1 || d > 31 || hh > 23 || mm > 59) return null;
-  const date = new Date(Date.UTC(y, m - 1, d, hh, mm, 0, 0));
+  if (m < 1 || m > 12 || d < 1 || d > 31 || hh > 23 || mm > 59 || ss > 59) {
+    return null;
+  }
+  const date = new Date(Date.UTC(y, m - 1, d, hh, mm, ss, 0));
   // Rejects impossible calendar dates such as February 30.
   if (date.getUTCMonth() !== m - 1 || date.getUTCDate() !== d) return null;
   return date.toISOString();
@@ -379,8 +382,9 @@ function offsetIso(
   hh: number,
   mm: number,
   offsetMs: number,
+  ss = 0,
 ): string | null {
-  const local = iso(y, m, d, hh, mm);
+  const local = iso(y, m, d, hh, mm, ss);
   if (local === null) return null;
   return new Date(Date.parse(local) - offsetMs).toISOString();
 }
@@ -408,5 +412,243 @@ export function parseSlashDateTimeRange(
   return {
     start: { iso: startIso, precision: "exact" },
     end: { iso: endIso, precision: "exact" },
+  };
+}
+
+/**
+ * Named timezone abbreviations this file will convert from, in milliseconds.
+ *
+ * Deliberately only the ones a source actually states, and deliberately only
+ * ones with a fixed offset. An abbreviation absent here parses to null, which
+ * is the same answer this file gives every other missing fact — and the reason
+ * the map is not pre-populated with the obvious candidates is that half of them
+ * are not fixed: `CST` names three different zones and `PT` shifts by an hour
+ * twice a year, so a plausible-looking entry is a wrong date waiting for the
+ * source to use it.
+ */
+const NAMED_ZONE_OFFSET_MS: Record<string, number> = {
+  // Japan observes no daylight saving, so UTC+9 holds all year.
+  jst: 9 * 60 * 60 * 1000,
+};
+
+/**
+ * "08/17/2026 8:00PM (JST)" → 2026-08-17T11:00:00.000Z, exact precision.
+ *
+ * One boundary, not a range: the hololive Dreams wiki gives Start Date and End
+ * Date their own columns, so there is nothing to split and the whole cell is
+ * anchored at both ends.
+ *
+ * Three things separate this from the readers above:
+ *
+ * - **A 12-hour clock**, which is the detail most likely to be got wrong
+ *   silently. `12:00PM` is noon and `12:00AM` is midnight — the hour is not
+ *   `12 + 12` in the first case and not `12` in the second — and a naive
+ *   reading puts an event's start twelve hours out without ever failing.
+ * - **The zone is named, not offset.** `parseOrdinalDateTimeRange` reads a
+ *   stated `(UTC-5)`; here the source writes `(JST)`, so the abbreviation is
+ *   resolved through `NAMED_ZONE_OFFSET_MS` and an unrecognised one returns
+ *   null rather than being read as UTC.
+ * - **The zone is required.** A cell stating a wall clock and no zone is a
+ *   missing fact, and this page always states one — so the day a row loses it,
+ *   that row should vanish rather than silently land nine hours off.
+ *
+ * Month-first, like `parseShortSlashRange`: the source is written for an
+ * English-speaking audience and its own rows settle it — `08/17/2026` and
+ * `08/27/2026` are both readable either way, but `08/30/2026` is not a day-first
+ * date at all.
+ */
+export function parseSlashClockZone(input: string): ParsedInstant | null {
+  const re =
+    /^\s*(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})\s*([AP])M\s*\(([A-Za-z]+)\)\s*$/i;
+  const m = re.exec(input);
+  if (!m) return null;
+
+  const offsetMs = NAMED_ZONE_OFFSET_MS[(m[7] ?? "").toLowerCase()];
+  if (offsetMs === undefined) return null;
+
+  const hour12 = Number(m[4]);
+  if (hour12 < 1 || hour12 > 12) return null;
+  const pm = (m[6] ?? "").toUpperCase() === "P";
+  // Noon and midnight are the two readings a 12-hour clock gets wrong: 12PM is
+  // hour 12 and 12AM is hour 0, so the wrap happens before the PM shift.
+  const hour = (hour12 % 12) + (pm ? 12 : 0);
+
+  const value = offsetIso(
+    Number(m[3]),
+    Number(m[1]),
+    Number(m[2]),
+    hour,
+    Number(m[5]),
+    offsetMs,
+  );
+  return value === null ? null : { iso: value, precision: "exact" };
+}
+
+/**
+ * "2025-01-16 17:00 - 2025-02-06 02:59 (UTC)" → both instants, exact precision.
+ *
+ * IOP Wiki's GFL2 event tables put the whole period in one cell and — unusually
+ * for a community wiki — state the zone on every one of them. That makes this
+ * the only range reader here that converts nothing: the source has already done
+ * it, so both boundaries are exact and no offset is assumed anywhere.
+ *
+ * **The zone is required**, for the reason `parseSlashClockZone` requires its
+ * own: a cell that states a wall clock and no zone is a missing fact, not an
+ * invitation to read it as UTC. All 145 rows on the page carry `(UTC)` today,
+ * so the day one loses it that row should drop out rather than land hours off
+ * on a boundary the reader is standing in the game watching.
+ *
+ * Anchored at the start so a range cannot be found inside prose or a slug; left
+ * open at the end because the cell also carries an ICS export widget, whose
+ * markup the caller strips but whose container survives as trailing whitespace.
+ */
+export function parseIsoClockRangeUtc(
+  input: string,
+): { start: ParsedInstant; end: ParsedInstant } | null {
+  const re =
+    /^\s*(\d{4})-(\d{2})-(\d{2})\s+(\d{1,2}):(\d{2})\s*[-–—]\s*(\d{4})-(\d{2})-(\d{2})\s+(\d{1,2}):(\d{2})\s*\(UTC\)/i;
+  const m = re.exec(input);
+  if (!m) return null;
+
+  const n = (i: number) => Number(m[i]);
+  const startIso = iso(n(1), n(2), n(3), n(4), n(5));
+  const endIso = iso(n(6), n(7), n(8), n(9), n(10));
+  if (startIso === null || endIso === null) return null;
+
+  return {
+    start: { iso: startIso, precision: "exact" },
+    end: { iso: endIso, precision: "exact" },
+  };
+}
+
+/**
+ * `2026-08-03T21:00-07:00` → 2026-08-04T04:00:00.000Z, exact precision.
+ *
+ * A machine-readable instant, which is rare enough here to be worth naming:
+ * the Stella Sora wiki's front page emits its banner window as real
+ * `<time datetime>` elements, so the offset is stated in the markup rather than
+ * printed for a human to interpret.
+ *
+ * **The offset is required.** `Z` or `±HH:MM` both pass; a bare local datetime
+ * does not, and that is the same call every other reader here makes. It matters
+ * more than usual on this source, because the page's sibling `Banner_List`
+ * prints the identical instants with no zone anywhere — reading those as UTC
+ * would be an assumption that happens to be right today and is unfalsifiable
+ * from the page, which is exactly the kind of fact this file refuses to invent.
+ *
+ * Anchored at both ends: an attribute value is a whole cell, not prose.
+ */
+export function parseIsoOffsetInstant(input: string): ParsedInstant | null {
+  const re =
+    /^\s*(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?\s*(Z|[+-]\d{2}:?\d{2})\s*$/i;
+  const m = re.exec(input);
+  if (!m) return null;
+
+  // Validated on the stated local fields before the offset shifts anything:
+  // converting first would quietly turn February 30 into a real March instant.
+  const local = iso(
+    Number(m[1]),
+    Number(m[2]),
+    Number(m[3]),
+    Number(m[4]),
+    Number(m[5]),
+  );
+  if (local === null) return null;
+
+  const value = Date.parse(input.trim());
+  if (Number.isNaN(value)) return null;
+  return { iso: new Date(value).toISOString(), precision: "exact" };
+}
+
+/**
+ * "12 August 2026" → 2026-08-12T00:00:00.000Z, day precision.
+ * "10 September 202604:59:59" → converted from `offsetMs`, exact precision.
+ *
+ * The Nikke wiki's schedule states its zone in the *column header*
+ * (`Start(UTC+9)`), not in the cell, so the offset arrives as an argument here
+ * rather than being read out of the text. A caller that cannot prove the zone
+ * must not call this.
+ *
+ * **A boundary with no clock keeps the day the page printed, unconverted.**
+ * That is the Fate/Grand Order rule (`AGENTS.md` § Fandom): there is no time of
+ * day to anchor a conversion to, and shifting a bare date by nine hours would
+ * move it to the previous calendar day — and the start's day is half an event
+ * ID. A boundary that does state a clock is converted, because then there is
+ * something real to convert.
+ *
+ * Day-first, unlike `parseMonthDayYear`: this wiki writes `12 August 2026`
+ * where Game8 writes `August 12, 2026`. The date and the clock arrive with no
+ * separator between them because they are separate elements in the markup, and
+ * reference markers (`[1]`) trail some cells, so the tail is tolerated rather
+ * than anchored.
+ */
+export function parseDayMonthYearClock(
+  input: string,
+  offsetMs: number,
+): ParsedInstant | null {
+  const re = /^\s*(\d{1,2})\s+([A-Za-z]+)\.?\s+(\d{4})\s*(?:(\d{1,2}):(\d{2})(?::(\d{2}))?)?/;
+  const m = re.exec(input.replace(/\[\d+\]/g, " "));
+  if (!m) return null;
+
+  const month = monthNumber(m[2] ?? "");
+  if (month === null) return null;
+
+  const day = Number(m[1]);
+  const year = Number(m[3]);
+
+  if (m[4] === undefined) {
+    // No clock: the printed day stands, exactly as it does on FGO's page.
+    const value = iso(year, month, day);
+    return value === null ? null : { iso: value, precision: "day" };
+  }
+
+  // Seconds matter here and are carried: this page ends its events at
+  // 04:59:59 and starts the next banner at 05:00:00, one second apart, and
+  // rounding that to the minute would make the two overlap.
+  const value = offsetIso(
+    year, month, day, Number(m[4]), Number(m[5]), offsetMs, Number(m[6] ?? 0),
+  );
+  return value === null ? null : { iso: value, precision: "exact" };
+}
+
+/**
+ * "July 20, 2026 04:00 – August 10, 2026 03:49" → both days, day precision.
+ *
+ * **The clock is read and deliberately thrown away.** The Infinity Nikki wiki
+ * states a wall clock on both boundaries and names no zone for it anywhere on
+ * the page — only prose elsewhere dating version launches `(UTC-7)` and a note
+ * that rewards reset at `04:00 (Server Time)`. Its durations do run 04:00 →
+ * 03:59, which only lands on a reset boundary if the column is server-local, so
+ * the case for UTC-7 is strong and it is still circumstantial.
+ *
+ * Publishing the clock would mean picking an offset, and the offset moves the
+ * *day*: `July 16, 2026 20:00` read as UTC-7 is `2026-07-17T03:00Z`, and the
+ * start's day is half of every event ID this game will ever have. So the
+ * printed date stands on its own, at day precision, exactly as every Game8 date
+ * does — Game8 states no zone either, and `clockFor` exists to resolve such a
+ * boundary against the reader's own server reset.
+ *
+ * Matching the clock rather than ignoring it is the point: a cell whose shape
+ * this reader does not fully recognise yields null instead of a half-read date.
+ */
+export function parseZonelessClockRange(
+  input: string,
+): { start: ParsedInstant; end: ParsedInstant } | null {
+  const re =
+    /^\s*([A-Za-z]+)\.?\s+(\d{1,2}),\s*(\d{4})(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?\s*[-–—]\s*([A-Za-z]+)\.?\s+(\d{1,2}),\s*(\d{4})(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?\s*$/;
+  const m = re.exec(input);
+  if (!m) return null;
+
+  const startMonth = monthNumber(m[1] ?? "");
+  const endMonth = monthNumber(m[4] ?? "");
+  if (startMonth === null || endMonth === null) return null;
+
+  const startIso = iso(Number(m[3]), startMonth, Number(m[2]));
+  const endIso = iso(Number(m[6]), endMonth, Number(m[5]));
+  if (startIso === null || endIso === null) return null;
+
+  return {
+    start: { iso: startIso, precision: "day" },
+    end: { iso: endIso, precision: "day" },
   };
 }

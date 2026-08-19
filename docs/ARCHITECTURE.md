@@ -77,6 +77,7 @@ src/
       akwiki.ts         arknights.wiki.gg mrfz-wtable             ✓ built
       fandom.ts         Fandom via the action=parse API           ✓ built
       bawiki.ts         bluearchive.wiki JP/Global tabber         ✓ built
+      holodori.ts       holodori.wiki Current/Past Events tables   ✓ built
       index.ts          parser registry                           ✓ built
     adapters/
       types.ts          Adapter interface, ParseContext           ✓ built
@@ -96,11 +97,11 @@ src/
     sw.js               offline: shell cache, feed fallback
     manifest.webmanifest, icon.svg
     components/
-      NextUp.tsx        the hero countdown          (PRD F1)
+      NextUp.tsx        the next three deadlines    (PRD F2)
       EventRow.tsx      row + meter + caption       (F2, F3)
       Meter.tsx         the depletion meter
       Legend.tsx        what the bars and colours mean
-      Timeline.tsx      calendar lanes              (F1)
+      Timeline.tsx      the board: pinned axis, lanes, bars   (F1)
       EventDetail.tsx   detail sheet, ignore action (F9)
       ProgressControls  status, effort, note        (F12)
       Dailies.tsx       today's strip, per-game reset clocks
@@ -108,7 +109,7 @@ src/
       Fireworks.tsx     the burst when the last daily lands
       GameFocus.tsx     one game at a time          (F4a)
       Controls.tsx      games, region, export/import(F4, F5, F6)
-      Welcome.tsx       first-run game picker       (F8)
+      Welcome.tsx       first-run games and view    (F8)
       Toast.tsx         undo an ignore
       UpdateNotice      a newer app is installed and waiting  (F14)
       YourOwn.tsx       the reader's own games, in settings   (F13)
@@ -119,11 +120,14 @@ src/
       useMarkSet.ts     ignores (and the superseded completions shape)
       useProgress.ts    status, effort, note, daily override  (F12)
       useDailyLog.ts    which game-days are ticked off
-      usePrefs.ts       region, filters, focus, onboarding flags
+      usePrefs.ts       region, filters, focus, view, theme, onboarding flags
+      theme.ts          dark/light: resolving it, applying it, hues on paper
       useCustom.ts      the reader's own games and events     (F13)
       gameMeta.tsx      lane id → name, label, hue; resolves custom lanes too
       sort.ts           deadline order, or what you're partway through
       lens.ts           who sees which rows — focus, outstanding, next-to-expire
+      zoom.ts           the timeline's scale ladder; pure
+      lanes.ts          how the timeline stacks — lanes, or one deadline queue; pure
       useAppUpdate.ts   is a newer build waiting, and taking it   (F14)
 serve.ts                static server + /api/health              ✓ built
 scripts/
@@ -235,6 +239,24 @@ The service worker caches the shell and webfonts (cache-first) and the feed (net
 back to the last copy seen). Countdowns run off the device clock, so the app stays useful with no
 network. Offline state is surfaced in the header and above the footer — stale data must never be
 presented as current.
+
+### The theme, before the bundle arrives
+
+The page is drawn dark by default and light when the reader has asked for it (PRD F15). Which one
+is decided by one attribute on `<html>`: `styles.css` holds the dark tokens on `:root` and
+re-strikes them under `:root[data-theme="light"]`, so nothing in React knows a theme exists and no
+component holds a colour of its own.
+
+Setting that attribute is the one part React cannot do in time. It mounts after the bundle has
+downloaded and parsed, which on a cold cache is long enough to show a reader who chose light a
+dark page, on every single load. So a small inline script in `index.html` reads the same
+`localStorage` prefs key the app does, sets the same attribute, and updates `<meta
+name="theme-color">` — before first paint, and with a `try`/`catch` so storage being unavailable
+costs the reader the default theme rather than the page.
+
+That makes the theme's ground colour a fact written in three files that cannot import each other:
+the stylesheet, `state/theme.ts` (which needs it for the meta tag), and the shell. `test/theme.test.ts`
+pins the three together rather than trusting them to be edited at the same time.
 
 ### Shipping a new version to an open page
 

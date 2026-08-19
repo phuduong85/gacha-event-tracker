@@ -1,0 +1,11 @@
+{
+  "sourceId": "nikke-fandom-events",
+  "url": "https://nikke-goddess-of-victory-international.fandom.com/api.php?action=parse&page=Event&prop=text&formatversion=2&format=json",
+  "contentHash": "4918e244678d102e0d43ce3b03a8de00f2d4412386ab4a3c539b68c8751f25e8",
+  "bytes": 374611,
+  "etag": null,
+  "lastModified": null,
+  "contentChangedAt": "2026-08-19T02:46:29.625Z",
+  "eventCount": 3,
+  "charset": "utf-8"
+}

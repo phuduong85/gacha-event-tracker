@@ -45,6 +45,13 @@ const INCLUDED_SECTIONS = [
   /list of (all )?events/i,
   /all available events/i,
   /ongoing events/i,
+  // Some Game8 wikis schedule banners rather than events, and head their
+  // sections accordingly — Umamusume's page is `List of All Banners` →
+  // `All Current Banners`. Kept as separate patterns rather than making
+  // "events?" optional above, so "Banner Guides" (a nav table) still matches
+  // nothing.
+  /list of (all )?banners/i,
+  /current banners/i,
 ];
 
 /**
@@ -57,6 +64,12 @@ const EXCLUDED_SECTIONS = [
   /previous events/i,
   /ended events/i,
   /finished events/i,
+  // The banner-scheduling pages need their own back-catalogue heading for the
+  // same reason: Umamusume's finished rows sit under `Previous Banners`, which
+  // `previous events` does not match, and they are dated exactly like the live
+  // ones directly above them.
+  /previous banners/i,
+  /past banners/i,
 ];
 
 /**
@@ -72,9 +85,9 @@ const END_LABEL = /^(event|test run|banner)?\s*end(\s+date)?$/i;
 const RANGE_LABEL = /^(availability period|event period|duration|period|dates)$/i;
 
 /** Column-table header matchers. */
-const COL_TITLE = /^(.*\b)?events?$/i;
+const COL_TITLE = /^(.*\b)?(events?|banners?)$/i;
 const COL_RANGE =
-  /^(event |all )?(duration|dates?|event date|period|availability period|schedule)( ?& ?summary| and summary)?$/i;
+  /^(event |all )?(duration|dates?|event date|period|availability(?: period)?(?: \(utc\))?|schedule)( ?& ?summary| and summary)?$/i;
 const COL_START = /^start$/i;
 const COL_END = /^end$/i;
 const COL_SUMMARY = /^(event )?(details?|description|overview)$/i;
@@ -205,18 +218,32 @@ function readLabelledDates(
 
 /** Shape 2: one row per event, with a title column and a range column. */
 function readColumnTable(rows: string[][]): Candidate[] {
-  if (rows.length < 2) return [];
-  const header = rows[0];
-  if (header === undefined) return [];
+  // Usually row 0 heads the table. Where it does not, row 1 does: Game8 lays
+  // two schedules side by side inside one `<table>` and gives the pair a
+  // spanning label row — Umamusume's current banners are headed
+  // `Standard Banners | Banner | Rating | Availability | Paid Banners | …`,
+  // with the real header on the row below and three-cell data rows under that.
+  //
+  // That label row is not merely unhelpful, it is *plausible*: it contains the
+  // word "Banners" and the word "Availability", so it resolves both columns and
+  // puts the range at index 3, which no data row has. Every row then fails to
+  // date and the table yields nothing at all. So the header is decided by what
+  // it produces rather than by where it sits — and row 0 still wins whenever it
+  // produces anything, which is what keeps every page that parses today parsing
+  // exactly as it did.
+  const fromFirst = readRowsUnder(rows, 0);
+  return fromFirst.length > 0 ? fromFirst : readRowsUnder(rows, 1);
+}
 
-  const titleIdx = header.findIndex((h) => COL_TITLE.test(h));
-  const rangeIdx = header.findIndex((h) => COL_RANGE.test(h));
-  if (titleIdx === -1 || rangeIdx === -1) return [];
-
-  const summaryIdx = header.findIndex((h) => COL_SUMMARY.test(h));
+/** Read `rows`, treating row `headerIdx` as the header and the rest as data. */
+function readRowsUnder(rows: string[][], headerIdx: number): Candidate[] {
+  if (rows.length < headerIdx + 2) return [];
+  const layout = columnLayout(rows[headerIdx]);
+  if (layout === null) return [];
+  const { titleIdx, rangeIdx, summaryIdx } = layout;
 
   const out: Candidate[] = [];
-  for (const row of rows.slice(1)) {
+  for (const row of rows.slice(headerIdx + 1)) {
     const title = row[titleIdx]?.trim();
     const rangeCell = row[rangeIdx];
     if (!title || rangeCell === undefined) continue;
@@ -239,6 +266,27 @@ function readColumnTable(rows: string[][]): Candidate[] {
     out.push({ title, summary, start: range.start, end: range.end });
   }
   return out;
+}
+
+interface ColumnLayout {
+  titleIdx: number;
+  rangeIdx: number;
+  summaryIdx: number;
+}
+
+/** Where the columns sit, if this row is a header row at all. */
+function columnLayout(header: string[] | undefined): ColumnLayout | null {
+  if (header === undefined) return null;
+
+  const titleIdx = header.findIndex((h) => COL_TITLE.test(h));
+  const rangeIdx = header.findIndex((h) => COL_RANGE.test(h));
+  if (titleIdx === -1 || rangeIdx === -1) return null;
+
+  return {
+    titleIdx,
+    rangeIdx,
+    summaryIdx: header.findIndex((h) => COL_SUMMARY.test(h)),
+  };
 }
 
 /**
@@ -373,7 +421,11 @@ function parseRange(
 export function inferType(title: string): EventType {
   const t = title.toLowerCase();
   if (/\brerun\b/.test(t)) return "rerun";
-  if (/\b(banner|wish|warp|convene|gacha)\b/.test(t)) return "banner";
+  // Every game names its gacha something else — "Summoning Campaign" is the
+  // Fate/Grand Order one, and it is the whole of that page's banner vocabulary.
+  if (/\b(banner|wish|warp|convene|gacha|summon(?:ing)?)\b/.test(t)) {
+    return "banner";
+  }
   if (/\b(login|log-in|sign-in|check-in|daily bonus)\b/.test(t)) return "login";
   if (/\b(challenge|trial|onslaught|abyss|tower|test runs?|clash|combat)\b/.test(t))
     return "challenge";

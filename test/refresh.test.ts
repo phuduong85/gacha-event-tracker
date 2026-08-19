@@ -100,6 +100,7 @@ function options(
     },
     dryRun: false,
     only: null,
+    force: false,
     timeoutMs: 1000,
     log: () => {},
     rebuildFeed: async () => {
@@ -202,6 +203,88 @@ describe("one request per source per six hours", () => {
     expect(summary.hardFailure).toBeNull();
   });
 
+  test("--force asks a source that was not due, and says which", async () => {
+    await store.recordCheck("genshin-game8-events", {
+      at: new Date(NOW.getTime() - 1000).toISOString(),
+      status: 200,
+      ok: true,
+    });
+
+    const { opts, calls } = options({ force: true });
+    const summary = await runRefresh(opts);
+
+    expect(calls).toHaveLength(1);
+    expect(summary.outcomes[0]?.result).not.toBe("skipped_interval");
+    // Named, not merely permitted. Overriding an etiquette obligation quietly
+    // is how the obligation stops being one.
+    expect(summary.forced).toEqual(["genshin-game8-events"]);
+    expect(summary.warnings.some((w) => w.includes("--force"))).toBe(true);
+  });
+
+  test("--force still sends conditional headers, so an unchanged page is a 304", async () => {
+    // The whole reason forcing is defensible: the host is asked, not re-served.
+    await seed("<html><event></event></html>", NOW.toISOString(), 1);
+    await store.recordCheck("genshin-game8-events", {
+      at: new Date(NOW.getTime() - 1000).toISOString(),
+      status: 200,
+      ok: true,
+    });
+
+    const { opts, calls } = options({
+      force: true,
+      responder: () => new Response(null, { status: 304 }),
+    });
+    const summary = await runRefresh(opts);
+
+    expect(calls[0]?.headers["If-None-Match"]).toBe('W/"v1"');
+    expect(summary.outcomes[0]?.result).toBe("unchanged");
+  });
+
+  test("--force sets aside the interval and nothing else", async () => {
+    // robots is the gate it must never touch. A source that was not due AND is
+    // disallowed stays skipped for the reason that actually matters.
+    await store.recordCheck("genshin-game8-events", {
+      at: new Date(NOW.getTime() - 1000).toISOString(),
+      status: 200,
+      ok: true,
+    });
+
+    const { opts, calls } = options({
+      force: true,
+      robots: {
+        allows: async () => ({ allowed: false, reason: "disallowed by robots" }),
+      },
+    });
+    const summary = await runRefresh(opts);
+
+    expect(calls).toHaveLength(0);
+    expect(summary.outcomes[0]?.result).toBe("skipped_robots");
+  });
+
+  test("a run that was due anyway is not reported as forced", async () => {
+    // --force is a description of what happened, not of what was passed. A
+    // summary that cried "forced" on an ordinary run would train the reader to
+    // ignore the word.
+    await store.recordCheck("genshin-game8-events", {
+      at: new Date(NOW.getTime() - SIX_HOURS_MS).toISOString(),
+      status: 200,
+      ok: true,
+    });
+
+    const { opts, calls } = options({ force: true });
+    const summary = await runRefresh(opts);
+
+    expect(calls).toHaveLength(1);
+    expect(summary.forced).toEqual([]);
+    expect(summary.warnings).toEqual([]);
+  });
+
+  test("an ordinary run reports nothing forced", async () => {
+    const { opts } = options({});
+    const summary = await runRefresh(opts);
+    expect(summary.forced).toEqual([]);
+  });
+
   test("fetches again once the interval has elapsed", async () => {
     await store.recordCheck("genshin-game8-events", {
       at: new Date(NOW.getTime() - SIX_HOURS_MS).toISOString(),
@@ -261,6 +344,40 @@ describe("robots", () => {
     expect(calls).toHaveLength(0);
     expect(summary.outcomes[0]?.result).toBe("skipped_robots");
     expect(summary.warnings).toHaveLength(1);
+  });
+
+  test("fetching on an assumed robots permission is named in the summary", async () => {
+    // The override cannot be silent: a permission nobody can re-read is one
+    // nobody withdraws, so every host it applied to is reported by name and
+    // warned about, on a run that otherwise looks completely ordinary.
+    const { opts } = options({
+      robots: {
+        allows: async () => ({
+          allowed: true,
+          reason: "robots.txt returned 403; proceeding on a recorded permission",
+          assumedOnForbidden: true,
+        }),
+      },
+    });
+    const summary = await runRefresh(opts);
+
+    expect(summary.outcomes[0]?.result).toBe("fetched");
+    expect(summary.assumedRobots).toEqual(["game8.co"]);
+    // Exactly one warning per host, and it carries the instruction. The host
+    // was reported twice for a while — once from here and once from a second
+    // loop in main() — which also left the run's "N warnings" count disagreeing
+    // with the number of lines printed under it.
+    const assumed = summary.warnings.filter((w) =>
+      w.includes("--assume-robots-on-403"),
+    );
+    expect(assumed).toHaveLength(1);
+    expect(assumed[0]).toContain("Re-read it in a browser");
+  });
+
+  test("an ordinary run reports no assumed hosts at all", async () => {
+    const { opts } = options({});
+    const summary = await runRefresh(opts);
+    expect(summary.assumedRobots).toEqual([]);
   });
 
   test("one source blocked is a warning; all of them is a failure", async () => {
@@ -769,6 +886,8 @@ describe("what the runner reports to the runner", () => {
       },
     ],
     hardFailure: null,
+    assumedRobots: [],
+    forced: [],
   };
 
   test("a broken source becomes an annotation on the run page", () => {
@@ -928,8 +1047,20 @@ describe("flags", () => {
     });
   });
 
+  test("parseArgs reads --assume-robots-on-403, and it is off by default", () => {
+    expect(parseArgs([]).assumeRobotsOn403).toBe(false);
+    expect(parseArgs(["--assume-robots-on-403"]).assumeRobotsOn403).toBe(true);
+  });
+
+  test("parseArgs reads --force, and it is off by default", () => {
+    expect(parseArgs([]).force).toBe(false);
+    expect(parseArgs(["--force"]).force).toBe(true);
+  });
+
   test("parseArgs rejects an unknown flag rather than ignoring it", () => {
-    expect(() => parseArgs(["--force"])).toThrow("unknown flag");
+    // Deliberately a flag nobody would add. This case used to be spelled
+    // `--force`, which stopped testing anything the day --force was built.
+    expect(() => parseArgs(["--yolo"])).toThrow("unknown flag");
   });
 
   test("parseArgs rejects a flag whose value is missing", () => {

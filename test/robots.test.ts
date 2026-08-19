@@ -341,3 +341,69 @@ describe("RobotsCache", () => {
     expect(calls).toHaveLength(2);
   });
 });
+
+describe("--assume-robots-on-403", () => {
+  /**
+   * Fandom answers a datacentre address 403 on `/robots.txt` itself, while
+   * `api.php?action=parse` answers our own User-Agent with a 200. The gate
+   * fails closed on the unreadable file, so four sources can never refresh —
+   * even though their rules are known: a person read them in a browser and
+   * wrote them into AGENTS.md § Scraping conduct.
+   *
+   * This option is that recorded permission, and nothing wider. The tests below
+   * are mostly about what it must NOT do.
+   */
+  const forbidden = () => new Response("denied", { status: 403 });
+
+  function cache(assume: boolean, responder = forbidden) {
+    return new RobotsCache({
+      userAgent: UA,
+      fetchImpl: async () => responder(),
+      assumeAllowedWhenForbidden: assume,
+    });
+  }
+
+  test("without it, a 403 on robots.txt still fails closed", async () => {
+    const d = await cache(false).allows("https://x.fandom.com/api.php?action=parse");
+    expect(d.allowed).toBe(false);
+    expect(d.reason).toContain("403");
+  });
+
+  test("with it, the host is fetched and the run is told why", async () => {
+    const d = await cache(true).allows("https://x.fandom.com/api.php?action=parse");
+    expect(d.allowed).toBe(true);
+    expect(d.assumedOnForbidden).toBe(true);
+    expect(d.reason).toContain("--assume-robots-on-403");
+  });
+
+  test("does not override a robots.txt we could read", async () => {
+    // The distinction the whole option rests on. A file that answers and
+    // refuses us is an answer, and it still wins with the flag on.
+    const refuses = () =>
+      new Response("User-agent: *\nDisallow: /\n", { status: 200 });
+    const d = await cache(true, refuses).allows("https://x.fandom.com/api.php");
+    expect(d.allowed).toBe(false);
+    expect(d.assumedOnForbidden).toBeUndefined();
+  });
+
+  test("covers 403 only, not every way robots.txt can fail", async () => {
+    // A 500, a soft 404 and an unreachable host are "we do not know", and
+    // unknown is still not permission. Only 403 is "we know, and were told by
+    // hand" — see game8.co, whose robots.txt reads fine and welcomes us while
+    // its edge refuses the pages; this flag is no use there and must not be.
+    const cases: Array<[string, () => Response]> = [
+      ["500", () => new Response("oops", { status: 500 })],
+      ["401", () => new Response("nope", { status: 401 })],
+      ["soft 404", () => new Response("<!doctype html><html>", { status: 200 })],
+    ];
+    for (const [label, responder] of cases) {
+      const d = await cache(true, responder).allows("https://x.test/wiki/Event");
+      expect(`${label}: ${d.allowed}`).toBe(`${label}: false`);
+    }
+  });
+
+  test("is off unless asked for", async () => {
+    const plain = new RobotsCache({ userAgent: UA, fetchImpl: async () => forbidden() });
+    expect((await plain.allows("https://x.test/a")).allowed).toBe(false);
+  });
+});

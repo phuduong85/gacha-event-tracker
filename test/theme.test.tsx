@@ -2,26 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Controls } from "../src/client/components/Controls.tsx";
 import { GameMetaProvider } from "../src/client/state/gameMeta.tsx";
-import { resolveTheme } from "../src/client/state/useTheme.ts";
 import type { Prefs } from "../src/client/state/usePrefs.ts";
 import { metaFor } from "../src/shared/games.ts";
-
-/**
- * "system" is the only case `resolveTheme` cannot answer alone — it takes
- * what prefers-color-scheme says as an argument rather than reading
- * `matchMedia` itself, which is what makes it testable without a DOM.
- */
-describe("resolveTheme", () => {
-  test("an explicit choice ignores what the system says", () => {
-    expect(resolveTheme("dark", "light")).toBe("dark");
-    expect(resolveTheme("light", "dark")).toBe("light");
-  });
-
-  test("system takes whatever the system says", () => {
-    expect(resolveTheme("system", "light")).toBe("light");
-    expect(resolveTheme("system", "dark")).toBe("dark");
-  });
-});
 
 function prefs(theme: Prefs["theme"]): Prefs {
   return {
@@ -29,6 +11,11 @@ function prefs(theme: Prefs["theme"]): Prefs {
     hiddenGames: [],
     focusGame: null,
     sort: "ending",
+    view: "soon",
+    timelineDayWidth: 32,
+    timelineGroup: "game",
+    showUpcoming: false,
+    timelineSplitUpcoming: true,
     detectDaily: false,
     showCompleted: true,
     showIgnored: false,
@@ -84,7 +71,7 @@ describe("the theme control", () => {
     const pressed = [...group![0].matchAll(/aria-pressed="(true|false)"/g)].map(
       (m) => m[1],
     );
-    // Order in THEMES is System, Dark, Light.
-    expect(pressed).toEqual(["false", "false", "true"]);
+    // Order in THEMES is Dark, Light, System.
+    expect(pressed).toEqual(["false", "true", "false"]);
   });
 });

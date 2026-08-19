@@ -84,6 +84,77 @@ const SOURCES: SourceSpec[] = [
     url: "https://reverse1999.fandom.com/api.php?action=parse&page=Events&prop=text&formatversion=2&format=json",
     parserId: "fandom",
   },
+  {
+    id: "holodori-holodoriwiki-events",
+    game: "holodori",
+    // The rendered page, the same call as `ba-bawiki-events` above and for the
+    // same reason: holodori.wiki is Miraheze, so `/w/` and `?action=` are the
+    // closed routes here and `/wiki/` is the one `*` is allowed.
+    url: "https://holodori.wiki/wiki/Events",
+    parserId: "holodoriwiki",
+  },
+  {
+    id: "gfl2-iopwiki-events",
+    game: "gfl2",
+    // IOP Wiki, the Girls' Frontline universe wiki. Its robots.txt is two lines
+    // — `User-agent: *` and `Crawl-Delay: 20` — with no Disallow anywhere, and
+    // the page answers our own User-Agent with a 200 and a real `Last-Modified`,
+    // so the conditional request below costs it a 304 on an unchanged day.
+    url: "https://iopwiki.com/wiki/GFL2_Events",
+    parserId: "iopwiki",
+  },
+  {
+    id: "stellasora-stellasorawiki-events",
+    game: "stellasora",
+    // The front page, and deliberately not `/wiki/Banner_List`: the list has
+    // full coverage and states no timezone anywhere, while this module emits
+    // the same instants as `<time datetime>` with the offset in the markup.
+    // See `parsers/stellasora.ts` for why coverage loses that argument.
+    url: "https://stellasora.miraheze.org/wiki/Main_Page",
+    parserId: "stellasorawiki",
+  },
+  {
+    id: "nikke-fandom-events",
+    game: "nikke",
+    // The MediaWiki API, like the two Fandom sources above. This wiki's
+    // robots.txt was read in a browser on 2026-08-19 and is the standard Fandom
+    // file: no `Disallow: /` for `*`, `/api.php?action=` explicitly allowed,
+    // and only `Special:`, `User:`, `User_talk:`, `Template:`, `Template_talk:`,
+    // `Help:` and `UserProfile:` refused. The named AI crawlers it blocks
+    // (GPTBot, CCBot, OAI-SearchBot, ImagesiftBot) are not us.
+    //
+    // As with r1999 and fgo, the robots gate still fails closed from a
+    // datacentre address, so the scheduled refresh reports skipped_robots and
+    // this lane is fixture-backed until refreshed from an address Fandom serves.
+    url: "https://nikke-goddess-of-victory-international.fandom.com/api.php?action=parse&page=Event&prop=text&formatversion=2&format=json",
+    parserId: "fandom",
+  },
+  {
+    id: "czn-game8-events",
+    game: "czn",
+    // The ninth game8 source, and the cost is worth stating plainly: game8's
+    // edge answers the Actions runner with a 202 and a bot-management body
+    // (AGENTS.md § Scraping conduct), so this lane is built from a checked-in
+    // fixture in CI from day one and only a manual `bun run refresh` moves it.
+    // `freshness()` discloses that in the footer, which is what it is for.
+    url: "https://game8.co/games/Chaos-Zero-Nightmare/archives/559899",
+    parserId: "game8",
+  },
+  {
+    id: "uma-game8-events",
+    game: "uma",
+    // `uma.moe` stays declined — its API sits behind a Cloudflare Turnstile
+    // proof header, and an adapter would mean defeating a deliberate access
+    // control. This is the surface that is simply open.
+    //
+    // The stable URL matters here: Game8 also publishes monthly
+    // `August 2026 Release Schedule` pages whose id changes every month, which
+    // a static registry cannot follow. "List of All Banners" does not move.
+    //
+    // The tenth game8 source, with the same CI blindness as the other nine.
+    url: "https://game8.co/games/Umamusume-Pretty-Derby/archives/536311",
+    parserId: "game8",
+  },
 ];
 
 function toAdapter(spec: SourceSpec): Adapter {

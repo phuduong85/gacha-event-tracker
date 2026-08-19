@@ -1,0 +1,23 @@
+[
+  {
+    "id": "gfl2:moonshroud-requiem:2026-08-06",
+    "game": "gfl2",
+    "title": "Moonshroud Requiem",
+    "type": "banner",
+    "summary": null,
+    "startsAt": "2026-08-06T13:00:00.000Z",
+    "startPrecision": "exact",
+    "endsAt": "2026-08-26T22:59:00.000Z",
+    "endPrecision": "exact",
+    "regionScoped": false,
+    "regionEnds": null,
+    "sourceUrl": "https://iopwiki.com/wiki/GFL2_Events",
+    "sourceId": "gfl2-iopwiki-events",
+    "status": "published",
+    "confidence": 0.95,
+    "extractionMethod": "parser",
+    "version": 1,
+    "firstSeenAt": "2026-08-14T00:00:00.000Z",
+    "updatedAt": "2026-08-14T00:00:00.000Z"
+  }
+]

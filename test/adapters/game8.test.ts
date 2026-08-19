@@ -3,7 +3,8 @@ import { adapterById } from "../../src/ingest/adapters/index.ts";
 import type { Adapter } from "../../src/ingest/adapters/types.ts";
 import { parseOrdinalDateTimeRange } from "../../src/ingest/dates.ts";
 import { fandomParser, renderedHtml } from "../../src/ingest/parsers/fandom.ts";
-import { inferType } from "../../src/ingest/parsers/game8.ts";
+import { game8Parser, inferType } from "../../src/ingest/parsers/game8.ts";
+import { holodoriWikiParser } from "../../src/ingest/parsers/holodori.ts";
 import { GachaEvent, type EventType } from "../../src/shared/schema.ts";
 
 /**
@@ -34,6 +35,12 @@ const CASES: Array<{ adapter: Adapter; fixture: string }> = [
   // action API, and `snapshots/` names every stored body `<id>.html` whatever
   // its content type. The fixture is the bytes the fetcher would store.
   { adapter: adapter("r1999-fandom-events"), fixture: "fixtures/r1999/fandom-events-2026-08-17" },
+  { adapter: adapter("holodori-holodoriwiki-events"), fixture: "fixtures/holodori/holodoriwiki-events-2026-08-18" },
+  { adapter: adapter("gfl2-iopwiki-events"), fixture: "fixtures/gfl2/iopwiki-events-2026-08-19" },
+  { adapter: adapter("stellasora-stellasorawiki-events"), fixture: "fixtures/stellasora/stellasorawiki-events-2026-08-19" },
+  { adapter: adapter("czn-game8-events"), fixture: "fixtures/czn/game8-events-2026-08-19" },
+  { adapter: adapter("uma-game8-events"), fixture: "fixtures/uma/game8-events-2026-08-19" },
+  { adapter: adapter("nikke-fandom-events"), fixture: "fixtures/nikke/fandom-events-2026-08-19" },
 ];
 
 async function runAdapter(adapter: Adapter, fixture: string) {
@@ -170,6 +177,7 @@ describe("inferType", () => {
     ["Gold Clash", "challenge"],
     ["Seize the Day Login Bonus", "login"],
     ["Epitome Invocation Banner", "banner"],
+    ["Chaldea Boys Collection Summoning Campaign", "banner"],
     ["Mutual Aid in Bloom: Into the Frostlands", "other"],
   ];
   test.each(cases)("%s → %s", (title, expected) => {
@@ -405,3 +413,704 @@ describe("fandom parser", () => {
     expect(parseOrdinalDateTimeRange("February 20th, 05:00 - March 27th, 04:59 (UTC-5)")).toBeNull();
   });
 });
+
+describe("hololive Dreams wiki", () => {
+  const fixture = "fixtures/holodori/holodoriwiki-events-2026-08-18";
+  const holo = adapter("holodori-holodoriwiki-events");
+
+  function parse(html: string) {
+    return holo.parse(html, {
+      now: NOW,
+      sourceUrl: holo.url,
+      sourceId: holo.id,
+      game: holo.game,
+    });
+  }
+
+  /** A stand-in page with the two-heading shape this parser navigates. */
+  function paged(current: string, past: string): string {
+    return `<div class="mw-parser-output">
+      <h2>Current Events</h2><table class="wikitable">${current}</table>
+      <h2>Past Events</h2><table class="wikitable">${past}</table>
+      </div>`;
+  }
+
+  const HEADER =
+    "<tr><th>Logo</th><th>Event</th><th>Type</th><th>Start Date</th><th>End Date</th><th>Featured Members</th></tr>";
+
+  const row = (title: string, type: string, start: string, end: string) =>
+    `<tr><td></td><td>${title}</td><td>${type}</td><td>${start}</td><td>${end}</td><td></td></tr>`;
+
+  test("publishes Current Events and never the Past Events table below it", async () => {
+    // Counted independently off the fixture: the Current table holds three
+    // rows and the Past table two, and the two tables are identically shaped —
+    // so a reader that took every `wikitable` would put the back catalogue on
+    // the calendar with nothing to distinguish it.
+    const events = await runAdapter(holo, fixture);
+    expect(events.map((e) => e.title)).toEqual([
+      "Ultimate Summer For Me?",
+      "Training Support Missions",
+    ]);
+    for (const e of events) {
+      expect(e.title).not.toMatch(/Synced Summer Sparkles|Brand New Summer/);
+    }
+  });
+
+  test("converts JST to UTC on both boundaries, to the minute", async () => {
+    // This is the only wiki source here that states a timezone on every cell,
+    // which is what earns `exact` on both sides without a per-region timer.
+    const [spotlight, missions] = await runAdapter(holo, fixture);
+
+    // 08/17/2026 8:00PM (JST) → 11:00Z the same day.
+    expect(spotlight?.startsAt).toBe("2026-08-17T11:00:00.000Z");
+    // 08/27/2026 7:59PM (JST) → 10:59Z.
+    expect(spotlight?.endsAt).toBe("2026-08-27T10:59:00.000Z");
+    // 08/30/2026 3:59AM (JST) → 18:59Z on the 29th: a small-hours JST boundary
+    // lands on the *previous* UTC day, which is exactly the shift that makes
+    // storing the source's own wall clock unusable.
+    expect(missions?.endsAt).toBe("2026-08-29T18:59:00.000Z");
+
+    for (const e of await runAdapter(holo, fixture)) {
+      expect(e.startPrecision).toBe("exact");
+      expect(e.endPrecision).toBe("exact");
+      expect(e.confidence).toBe(0.95);
+    }
+  });
+
+  test("reads 12PM as noon and 12AM as midnight", async () => {
+    // The failure this guards is silent: a naive 12-hour reading puts a start
+    // twelve hours out and still produces a valid-looking instant.
+    const events = parse(
+      paged(
+        HEADER +
+          row("Noon", "Mission", "08/20/2026 12:00PM (JST)", "08/21/2026 12:00AM (JST)"),
+        HEADER,
+      ),
+    );
+    expect(events).toHaveLength(1);
+    // 12:00 JST → 03:00Z, not 00:00Z.
+    expect(events[0]?.startsAt).toBe("2026-08-20T03:00:00.000Z");
+    // 00:00 JST on the 21st → 15:00Z on the 20th, not noon.
+    expect(events[0]?.endsAt).toBe("2026-08-20T15:00:00.000Z");
+  });
+
+  test("drops a row whose start is not a date, and keeps one whose end is not", async () => {
+    // Both appear on the real page. `Beginner Mission` runs "Game Launch" →
+    // "Unknown": no start means no event ID and no place on a calendar of
+    // deadlines. An unannounced *end* is the opposite — it is a fact worth
+    // publishing, and inventing one is the failure this product exists to
+    // prevent.
+    expect((await runAdapter(holo, fixture)).map((e) => e.title)).not.toContain(
+      "Beginner Mission",
+    );
+
+    const events = parse(
+      paged(
+        HEADER +
+          row("Open ended", "Mission", "08/20/2026 12:00PM (JST)", "Unknown") +
+          row("No start", "Mission", "Game Launch", "08/21/2026 12:00PM (JST)"),
+        HEADER,
+      ),
+    );
+    expect(events.map((e) => e.title)).toEqual(["Open ended"]);
+    expect(events[0]?.endsAt).toBeNull();
+    expect(events[0]?.endPrecision).toBe("unknown");
+    // An unannounced end is weaker evidence and the gate should see that.
+    expect(events[0]?.confidence).toBe(0.8);
+  });
+
+  test("requires the stated timezone rather than falling back to UTC", async () => {
+    // A cell that loses its `(JST)` is a missing fact, and a missing fact is a
+    // dropped row here — not a nine-hour error nobody can see.
+    const events = parse(
+      paged(
+        HEADER +
+          row("Zoneless", "Mission", "08/20/2026 12:00PM", "08/21/2026 12:00PM") +
+          row("Unknown zone", "Mission", "08/20/2026 12:00PM (XYZ)", "08/21/2026 12:00PM (XYZ)"),
+        HEADER,
+      ),
+    );
+    expect(events).toEqual([]);
+  });
+
+  test("takes the type from the source's own column, not from the title", async () => {
+    // "Spotlight" is this game's word for a rate-up banner, and no reading of
+    // "Ultimate Summer For Me?" would ever produce it.
+    const [spotlight, missions] = await runAdapter(holo, fixture);
+    expect(spotlight?.type).toBe("banner");
+    expect(spotlight?.summary).toBe("Spotlight");
+    expect(missions?.type).toBe("other");
+
+    const events = parse(
+      paged(
+        HEADER +
+          row("Rally", "Point Rally", "08/20/2026 12:00PM (JST)", "08/28/2026 12:00PM (JST)") +
+          row("Scored", "Score Challenge", "08/20/2026 12:00PM (JST)", "08/28/2026 12:00PM (JST)"),
+        HEADER,
+      ),
+    );
+    // The game's two ranked scoring formats land in the same bucket, because
+    // the game does not draw a distinction between them that we can act on.
+    expect(events.map((e) => e.type)).toEqual(["challenge", "challenge"]);
+  });
+
+  test("a stale Current Events heading does not keep a finished event live", async () => {
+    // The heading is maintained by hand and lags the dates by a few days. The
+    // dates are the fact; the heading is someone's housekeeping.
+    const events = parse(
+      paged(
+        HEADER +
+          row("Over", "Mission", "07/01/2026 12:00PM (JST)", "07/20/2026 12:00PM (JST)"),
+        HEADER,
+      ),
+    );
+    expect(events).toEqual([]);
+  });
+
+  test("columns are resolved by name, so an inserted column moves nothing", async () => {
+    // The first column is a logo and the last a cast list. Counting from either
+    // end means one added column shifts every date one place, every row fails
+    // to parse, and the lane empties with no error anywhere.
+    const events = parse(
+      `<div class="mw-parser-output"><h2>Current Events</h2><table class="wikitable">
+        <tr><th>Logo</th><th>Banner</th><th>Event</th><th>Type</th><th>Start Date</th><th>End Date</th></tr>
+        <tr><td></td><td></td><td>Shifted</td><td>Spotlight</td><td>08/20/2026 12:00PM (JST)</td><td>08/28/2026 12:00PM (JST)</td></tr>
+      </table></div>`,
+    );
+    expect(events.map((e) => e.title)).toEqual(["Shifted"]);
+    expect(events[0]?.startsAt).toBe("2026-08-20T03:00:00.000Z");
+  });
+
+  test("a renamed heading or column fails the run instead of emptying the lane", () => {
+    const good = paged(HEADER, HEADER);
+    expect(holodoriWikiParser.canParse(good)).toBe(true);
+
+    // The heading the parser navigates by.
+    expect(holodoriWikiParser.canParse(good.replace("Current Events", "Live Events"))).toBe(false);
+    // A column it reads.
+    expect(holodoriWikiParser.canParse(good.replace(/<th>Start Date<\/th>/g, "<th>Begins</th>"))).toBe(false);
+  });
+
+  test("links to the events page while every article is still a red link", async () => {
+    // The wiki has no article for any of these events yet, so each title links
+    // to `?action=edit&redlink=1` — a create-page form, and a `?action=` URL
+    // this wiki's robots.txt disallows. Neither belongs in the feed.
+    for (const e of await runAdapter(holo, fixture)) {
+      expect(e.sourceUrl).toBe("https://holodori.wiki/wiki/Events");
+      expect(e.sourceUrl).not.toMatch(/action=|redlink|Special:/);
+    }
+
+    // A real article, once one exists, is linked.
+    const events = parse(
+      paged(
+        HEADER +
+          row(
+            '<a href="/wiki/Ultimate_Summer" title="Ultimate Summer">Ultimate Summer</a>',
+            "Spotlight",
+            "08/20/2026 12:00PM (JST)",
+            "08/28/2026 12:00PM (JST)",
+          ),
+        HEADER,
+      ),
+    );
+    expect(events[0]?.sourceUrl).toBe("https://holodori.wiki/wiki/Ultimate_Summer");
+  });
+
+  test("reports one global end rather than inventing per-region ones", async () => {
+    // One worldwide service on a Japanese clock: the page states each boundary
+    // once, in JST, with no per-region column anywhere.
+    for (const e of await runAdapter(holo, fixture)) {
+      expect(e.regionScoped).toBe(false);
+      expect(e.regionEnds).toBeNull();
+    }
+  });
+});
+
+describe("IOP Wiki (Girls' Frontline 2)", () => {
+  const fixture = "fixtures/gfl2/iopwiki-events-2026-08-19";
+  const gfl2 = adapter("gfl2-iopwiki-events");
+
+  function parse(html: string) {
+    return gfl2.parse(html, {
+      now: NOW,
+      sourceUrl: gfl2.url,
+      sourceId: gfl2.id,
+      game: gfl2.game,
+    });
+  }
+
+  const HEADER =
+    "<tr><th>Title</th><th>Period (start/end)</th><th>Server</th><th>Type</th><th>Comment</th></tr>";
+
+  const row = (title: string, period: string, server: string, type = "Character Event") =>
+    `<tr><td>${title}</td><td>${period}</td><td>${server}</td><td>${type}</td><td></td></tr>`;
+
+  /** A stand-in page with the heading-fenced shape this parser navigates. */
+  const paged = (main: string, betas = "") =>
+    `<h2>Main Events</h2><h3>Event</h3><table class="gf-table event-period">${main}</table>
+     <h2>Betas</h2><table class="gf-table event-period">${betas}</table>`;
+
+  test("publishes only the EN server's rows", async () => {
+    // The hazard this source has, and the only one that could put a
+    // confidently wrong date on the calendar: CN, EN and JP rows share one
+    // table and the Chinese schedule runs about a year ahead. Counted off the
+    // fixture: 145 rows, 51 of them EN.
+    const events = parse(
+      paged(
+        HEADER +
+          row("异乡乐徽", "2027-08-06 10:00 - 2027-08-26 09:59 (UTC)", "CN") +
+          row("Moonshroud Requiem", "2026-08-06 13:00 - 2026-08-26 22:59 (UTC)", "EN") +
+          row("失意の翼の中で", "2026-11-06 13:00 - 2026-11-26 22:59 (UTC)", "JP"),
+      ),
+    );
+    expect(events.map((e) => e.title)).toEqual(["Moonshroud Requiem"]);
+  });
+
+  test("fences out the Betas section", async () => {
+    // Closed beta rows are dated exactly like everything else and parse
+    // cleanly — onto a calendar of things nobody can play.
+    const events = parse(
+      paged(
+        HEADER + row("Moonshroud Requiem", "2026-08-06 13:00 - 2026-08-26 22:59 (UTC)", "EN"),
+        HEADER +
+          row("Closed Beta Test (Sunborn)", "2026-08-10 12:00 - 2026-08-19 08:00 (UTC)", "EN", "Open Beta"),
+      ),
+    );
+    expect(events.map((e) => e.title)).toEqual(["Moonshroud Requiem"]);
+  });
+
+  test("takes both boundaries exact, in the UTC the page states", async () => {
+    const events = await runAdapter(gfl2, fixture);
+    expect(events).toHaveLength(1);
+    const [live] = events;
+    expect(live?.title).toBe("Moonshroud Requiem");
+    expect(live?.startsAt).toBe("2026-08-06T13:00:00.000Z");
+    expect(live?.endsAt).toBe("2026-08-26T22:59:00.000Z");
+    expect(live?.startPrecision).toBe("exact");
+    expect(live?.endPrecision).toBe("exact");
+    // Nothing was converted or assumed, which is what earns the top score.
+    expect(live?.confidence).toBe(0.95);
+  });
+
+  test("drops a row that loses its zone rather than reading it as UTC", async () => {
+    // The page states `(UTC)` on all 145 rows. If one ever stops, that row is
+    // a wall clock with no zone — a missing fact, and the same call
+    // `parseSlashClockZone` makes on the hololive wiki.
+    const events = parse(
+      paged(HEADER + row("Zoneless", "2026-08-06 13:00 - 2026-08-26 22:59", "EN")),
+    );
+    expect(events).toEqual([]);
+  });
+
+  test("prefers the stated Type over a guess from the title", async () => {
+    // "Moonshroud Requiem" says nothing about being a character banner; the
+    // page's own Type column does.
+    const events = parse(
+      paged(
+        HEADER +
+          row("Moonshroud Requiem", "2026-08-06 13:00 - 2026-08-26 22:59 (UTC)", "EN") +
+          row("Corposant Part 1", "2026-08-07 13:00 - 2026-08-27 22:59 (UTC)", "EN", "Main Story Event") +
+          row("Endless Projections", "2026-08-08 13:00 - 2026-08-28 22:59 (UTC)", "EN", "Combat Event"),
+      ),
+    );
+    expect(events.map((e) => e.type)).toEqual(["banner", "story", "challenge"]);
+  });
+
+  test("word-infers a Type the wiki has not used before", async () => {
+    // An unmapped value must not silently flatten to "other" — that is how a
+    // taxonomy change goes unnoticed.
+    const events = parse(
+      paged(
+        HEADER +
+          row("Anniversary Login", "2026-08-06 13:00 - 2026-08-26 22:59 (UTC)", "EN", "Sign-in Event"),
+      ),
+    );
+    expect(events[0]?.type).toBe("login");
+  });
+
+  test("publishes nothing from the back catalogue", async () => {
+    // 145 rows go back to 2023 and nothing downstream drops a finished event,
+    // so the currency gate is this parser's job.
+    for (const e of await runAdapter(gfl2, fixture)) {
+      expect(e.endsAt === null || e.endsAt > NOW).toBe(true);
+    }
+  });
+
+  test("a redesign fails the source instead of emptying the lane", () => {
+    // 47 tables on this page, most of them layout. "A table exists" proves
+    // nothing; that the Title/Period/Server header row is still findable does.
+    expect(() =>
+      gfl2.parse("<h2>Main Events</h2><table><tr><th>Name</th><th>When</th></tr></table>", {
+        now: NOW,
+        sourceUrl: gfl2.url,
+        sourceId: gfl2.id,
+        game: gfl2.game,
+      }),
+    ).toThrow(/redesigned/);
+  });
+});
+
+describe("Stella Sora wiki", () => {
+  const fixture = "fixtures/stellasora/stellasorawiki-events-2026-08-19";
+  const ss = adapter("stellasora-stellasorawiki-events");
+
+  function parse(html: string) {
+    return ss.parse(html, {
+      now: NOW,
+      sourceUrl: ss.url,
+      sourceId: ss.id,
+      game: ss.game,
+    });
+  }
+
+  /**
+   * The module as the template actually emits it — BEM underscores escaped as
+   * `&#95;&#95;`, which is the detail a selector written from a browser's view
+   * of the page gets wrong.
+   */
+  const banner = (name: string, href: string, start: string, end: string) =>
+    `<div class="stellasora-home-banner">
+       <div class="stellasora-home-banner&#95;&#95;name"><a href="${href}">${name}</a></div>
+       <div class="stellasora-home-banner&#95;&#95;period">
+         <time class="stellasora-time" datetime="${start}">x</time> —
+         <time class="stellasora-time" datetime="${end}">y</time>
+       </div></div>`;
+
+  const carded = (banners: string) =>
+    `<div class="stellasora-home-card stellasora-home-card--current stellasora-home-current">
+       <div class="stellasora-home-current&#95;&#95;banners">${banners}</div></div>
+     <div class="stellasora-home-card stellasora-home-card--navigation">
+       <div class="stellasora-home-banner">
+         <div class="stellasora-home-banner&#95;&#95;name">Not a banner</div>
+         <div><time datetime="2026-08-01T00:00-07:00">z</time>
+              <time datetime="2026-12-01T00:00-07:00">z</time></div></div></div>`;
+
+  test("reads the four live banners, converting the stated offset", async () => {
+    const events = await runAdapter(ss, fixture);
+    expect(events.map((e) => e.title)).toEqual([
+      "A Breezy Romance",
+      "Afternoon Glimmer into the Green",
+      "Bloom to the Bright Sun",
+      "Tinges of Rainbow",
+    ]);
+    // 2026-08-17T20:00-07:00 → 03:00Z the next day. Cross-checked against the
+    // wiki's own `Banner_List`, which prints `2026-08-18 03:00:00` for this
+    // banner — the agreement that shows the unzoned table is UTC, and is still
+    // only evidence, which is why we read this page instead.
+    const bloom = events.find((e) => e.title === "Bloom to the Bright Sun");
+    expect(bloom?.startsAt).toBe("2026-08-18T03:00:00.000Z");
+    expect(bloom?.endsAt).toBe("2026-09-08T02:59:00.000Z");
+    for (const e of events) {
+      expect(e.startPrecision).toBe("exact");
+      expect(e.endPrecision).toBe("exact");
+      expect(e.type).toBe("banner");
+    }
+  });
+
+  test("finds the module through its HTML-escaped class name", () => {
+    // The template writes `&#95;&#95;` where a browser shows `__`. A selector
+    // written against the decoded name matches nothing and empties the lane
+    // with no error anywhere, which is the failure this codebase ranks worst.
+    const events = parse(
+      carded(
+        banner("A Breezy Romance", "/wiki/A_Breezy_Romance", "2026-08-03T21:00-07:00", "2026-08-24T12:59-07:00"),
+      ),
+    );
+    expect(events).toHaveLength(1);
+  });
+
+  test("stops at the next card rather than reading the whole page", () => {
+    // Five more cards follow this one. An unbounded slice would publish
+    // whichever of them grows a `<time>` element next.
+    const events = parse(
+      carded(
+        banner("A Breezy Romance", "/wiki/A_Breezy_Romance", "2026-08-03T21:00-07:00", "2026-08-24T12:59-07:00"),
+      ),
+    );
+    expect(events.map((e) => e.title)).toEqual(["A Breezy Romance"]);
+  });
+
+  test("refuses a red link's `?action=` href and falls back to the page", async () => {
+    // Miraheze's robots.txt disallows `?action=`, and a create-page form is the
+    // wrong place to send a reader. `holodori.ts` makes the same call.
+    const events = await runAdapter(ss, fixture);
+    const red = events.find((e) => e.title === "A Breezy Romance");
+    expect(red?.sourceUrl).toBe("https://stellasora.miraheze.org/wiki/Main_Page");
+    // The ones whose articles exist do get linked.
+    expect(events.find((e) => e.title === "Tinges of Rainbow")?.sourceUrl).toBe(
+      "https://stellasora.miraheze.org/wiki/Tinges_of_Rainbow/2026-08-17",
+    );
+  });
+
+  test("drops a banner whose datetime states no offset", () => {
+    // The sibling `Banner_List` prints exactly this — a wall clock with no zone
+    // anywhere on the page — and reading it as UTC is the assumption this
+    // source was chosen to avoid.
+    const events = parse(
+      carded(banner("Zoneless", "/wiki/Zoneless", "2026-08-03T21:00", "2026-08-24T12:59")),
+    );
+    expect(events).toEqual([]);
+  });
+
+  test("drops a banner missing one of its two timestamps", () => {
+    // A start paired with an end read off the next banner would be a
+    // confidently wrong date rather than a missing one.
+    const events = parse(
+      carded(
+        `<div class="stellasora-home-banner">
+           <div class="stellasora-home-banner&#95;&#95;name">Half</div>
+           <div><time datetime="2026-08-03T21:00-07:00">x</time></div></div>`,
+      ),
+    );
+    expect(events).toEqual([]);
+  });
+
+  test("a redesign fails the source instead of emptying the lane", () => {
+    expect(() =>
+      parse('<div class="stellasora-home-card">no module here</div>'),
+    ).toThrow(/redesigned/);
+    // The module present but its `<time>` children gone is equally a redesign.
+    expect(() =>
+      parse(
+        `<div class="stellasora-home-current&#95;&#95;banners">
+           <div class="stellasora-home-banner">Aug 3, 2026 — Aug 24, 2026</div></div>`,
+      ),
+    ).toThrow(/redesigned/);
+  });
+});
+
+describe("Chaos Zero Nightmare (game8)", () => {
+  const fixture = "fixtures/czn/game8-events-2026-08-19";
+  const czn = adapter("czn-game8-events");
+
+  test("reuses the game8 parser with no new parsing code", () => {
+    // The whole point of this source: a ninth game8 page is a registry entry,
+    // a fixture and a test. If this ever stops being true the page has moved
+    // to a template the parser does not know.
+    expect(czn.parserId).toBe("game8");
+  });
+
+  test("publishes the four datable events and skips the two without a start", async () => {
+    // The page carries six current events. Two print `Start Date: -`, and no
+    // start means no event ID — so skipping them is the rule working rather
+    // than a silent drop. Counted independently off the fixture: six
+    // `Start Date` rows, two of them `-`.
+    const events = await runAdapter(czn, fixture);
+    expect(events).toHaveLength(4);
+
+    const titles = events.map((e) => e.title);
+    expect(titles).toContain("Beach Cafe Festival");
+    expect(titles).toContain("Chasing the Remanants of Light");
+    // Both appear on the page and neither states a start.
+    expect(titles).not.toContain("Full-Scale Offensive Season 3");
+    expect(titles).not.toContain("Virtual Tactical Simulation - Yuki");
+  });
+
+  test("keeps Game8's day precision rather than inventing a clock", async () => {
+    // Game8 prints "July 29, 2026" and no time of day anywhere on this page.
+    for (const e of await runAdapter(czn, fixture)) {
+      expect(e.startPrecision).toBe("day");
+      expect(e.startsAt.endsWith("T00:00:00.000Z")).toBe(true);
+    }
+  });
+});
+
+describe("Umamusume (game8 banner pages)", () => {
+  const fixture = "fixtures/uma/game8-events-2026-08-19";
+  const uma = adapter("uma-game8-events");
+
+  test("reads the four current banners, both columns of them", async () => {
+    // Counted off the page: `All Current Banners` lays Standard and Paid
+    // banners side by side inside one <table>, two rows each.
+    const events = await runAdapter(uma, fixture);
+    expect(events.map((e) => e.title)).toEqual([
+      "3 Star Guaranteed 1.5 Anniversary Scout (Character)",
+      "3 Star Guaranteed 1.5 Anniversary Scout (Support)",
+      "Daiichi Ruby Power SSR and K.S. Miracle Guts SR",
+      "Seeking the Pearl (Rocket☆Star)",
+    ]);
+    const pearl = events.find((e) => e.title === "Seeking the Pearl (Rocket☆Star)");
+    // The page prints "8/12/2026 - 8/21/2026" and no time of day.
+    expect(pearl?.startsAt).toBe("2026-08-12T00:00:00.000Z");
+    expect(pearl?.endsAt).toBe("2026-08-21T00:00:00.000Z");
+    expect(pearl?.startPrecision).toBe("day");
+  });
+
+  test("never publishes the Previous Banners table", async () => {
+    // Dated exactly like the live rows and sitting directly below them, so the
+    // only thing separating them is the heading. `previous events` does not
+    // match `Previous Banners` — which is why that pattern was added.
+    const titles = (await runAdapter(uma, fixture)).map((e) => e.title);
+    expect(titles).not.toContain("Yukino Bijin (Darl'n Snowflake)");
+    expect(titles).not.toContain(
+      "Smart Falcon Power SSR and Silence Suzuka Speed SSR",
+    );
+  });
+});
+
+describe("game8 column vocabulary", () => {
+  // The parser directly rather than through an adapter: `canParse` guards the
+  // seam against a redesigned *page*, and these are hand-built table snippets.
+  const parse = (html: string) =>
+    game8Parser.parse(html, {
+      now: NOW,
+      // Hand-built table snippets, so the context is a label rather than a
+      // claim about a game — these assert table shape, not any one page.
+      sourceUrl: "https://game8.co/games/Genshin-Impact/archives/301601",
+      sourceId: "genshin-game8-events",
+      game: "genshin",
+    });
+
+  test("falls back to the second row when the first is a spanning label", () => {
+    // Game8 lays two schedules side by side in one <table> and gives the pair a
+    // label row. Reading that row as the header finds the range column at an
+    // index no data row has, so every row fails to date and the table silently
+    // yields nothing.
+    const events = parse(
+      `<h2>List of All Banners</h2><table>
+         <tr><th>Standard Banners</th><th>Banner</th><th>Rating</th><th>Availability</th>
+             <th>Paid Banners</th><th>Banner</th><th>Rating</th><th>Availability</th></tr>
+         <tr><th>Banner</th><th>Rating</th><th>Availability</th></tr>
+         <tr><td>Seeking the Pearl</td><td>★★★★☆</td><td>8/12/2026 - 8/21/2026</td></tr>
+       </table>`,
+    );
+    expect(events.map((e) => e.title)).toEqual(["Seeking the Pearl"]);
+  });
+
+  test("row 0 still wins wherever it resolves both columns", () => {
+    // The fallback must never let a page that parses today start reading a
+    // different row. Here row 0 is a real header and row 1 is data.
+    const events = parse(
+      `<h2>Current Events</h2><table>
+         <tr><th>Event</th><th>Duration</th></tr>
+         <tr><td>First</td><td>8/12/2026 - 8/21/2026</td></tr>
+         <tr><td>Second</td><td>8/13/2026 - 8/22/2026</td></tr>
+       </table>`,
+    );
+    expect(events.map((e) => e.title)).toEqual(["First", "Second"]);
+  });
+
+  test("reads a banner-scheduling page's headings and columns", () => {
+    const events = parse(
+      `<h2>All Current Banners</h2><table>
+         <tr><th>Banner</th><th>Availability (UTC)</th></tr>
+         <tr><td>Live One</td><td>8/12/2026 - 8/21/2026</td></tr>
+       </table>
+       <h3>Previous Banners</h3><table>
+         <tr><th>Banner</th><th>Availability</th></tr>
+         <tr><td>Finished One</td><td>8/1/2026 - 8/9/2026</td></tr>
+       </table>`,
+    );
+    expect(events.map((e) => e.title)).toEqual(["Live One"]);
+  });
+
+  test("`Banner Guides` is navigation, not a schedule", () => {
+    // The widened title column must not turn Game8's nav tables into events.
+    // This one has no range column at all, so it yields nothing either way —
+    // the assertion is that widening `Event` to `Banner` did not change that.
+    const events = parse(
+      `<h2>Current Events</h2><table>
+         <tr><th>Banner Guides</th></tr>
+         <tr><td>List of All Banners</td><td>Upcoming Banners</td></tr>
+       </table>`,
+    );
+    expect(events).toEqual([]);
+  });
+});
+
+describe("Nikke wiki (the third Fandom template)", () => {
+  const fixture = "fixtures/nikke/fandom-events-2026-08-19";
+  const nikke = adapter("nikke-fandom-events");
+
+  function parse(html: string) {
+    return nikke.parse(html, {
+      now: NOW,
+      sourceUrl: nikke.url,
+      sourceId: nikke.id,
+      game: nikke.game,
+    });
+  }
+
+  /** An `action=parse` envelope around one schedule table. */
+  const wrapped = (rows: string, startHead = "Start(UTC+9)", endHead = "End(UTC+9)") =>
+    JSON.stringify({
+      parse: {
+        text: `<table class="wikitable"><tr><th>Event</th><th>${startHead}</th>
+          <th>${endHead}</th><th>Archived(?)</th></tr>${rows}</table>`,
+      },
+    });
+
+  test("keeps the live event whose logo has not been uploaded", async () => {
+    // The row that matters most and the one a naive reader drops: every title
+    // here is an image read from <a title>, and the newest row is a red link
+    // reading "File:Persona on Frontline logo.png". Losing it publishes a
+    // calendar missing what is on right now.
+    const titles = (await runAdapter(nikke, fixture)).map((e) => e.title);
+    expect(titles).toContain("Persona on Frontline");
+    for (const t of titles) expect(t).not.toMatch(/^File:/);
+    for (const t of titles) expect(t).not.toMatch(/\.png$/i);
+  });
+
+  test("converts the stated UTC+9, carrying seconds", async () => {
+    const events = await runAdapter(nikke, fixture);
+    const persona = events.find((e) => e.title === "Persona on Frontline");
+    // Start is a bare date, so it keeps the day the page printed.
+    expect(persona?.startsAt).toBe("2026-08-12T00:00:00.000Z");
+    expect(persona?.startPrecision).toBe("day");
+    // End states 10 September 2026 04:59:59 (UTC+9) → 19:59:59Z the day before.
+    expect(persona?.endsAt).toBe("2026-09-09T19:59:59.000Z");
+    expect(persona?.endPrecision).toBe("exact");
+  });
+
+  test("a start with no clock keeps its printed day rather than shifting", () => {
+    // Nine hours would move a bare date to the previous calendar day, and the
+    // start's day is half an event ID. Same rule as the FGO page.
+    const events = parse(
+      wrapped(`<tr><td><a title="Bare Start">x</a></td><td>12 August 2026</td>
+        <td>10 September 202604:59:59</td><td></td></tr>`),
+    );
+    expect(events[0]?.startsAt).toBe("2026-08-12T00:00:00.000Z");
+    expect(events[0]?.id).toBe("nikke:bare-start:2026-08-12");
+  });
+
+  test("refuses a table whose columns stop naming the zone", () => {
+    // No date on this page carries an offset next to it, so the header is the
+    // only evidence of the zone. Losing it must empty the table, not default
+    // the whole schedule to UTC — the Blue Archive hazard one column left.
+    expect(() =>
+      parse(
+        wrapped(
+          `<tr><td><a title="Zoneless">x</a></td><td>12 August 2026</td>
+           <td>10 September 202604:59:59</td><td></td></tr>`,
+          "Start",
+          "End",
+        ),
+      ),
+    ).toThrow(/redesigned/);
+  });
+
+  test("reads the offset the header states, not a hardcoded one", () => {
+    const events = parse(
+      wrapped(
+        `<tr><td><a title="Shifted">x</a></td><td>12 August 2026</td>
+         <td>10 September 202604:00:00</td><td></td></tr>`,
+        "Start(UTC+2)",
+        "End(UTC+2)",
+      ),
+    );
+    expect(events[0]?.endsAt).toBe("2026-09-10T02:00:00.000Z");
+  });
+
+  test("publishes nothing that has already ended", async () => {
+    for (const e of await runAdapter(nikke, fixture)) {
+      expect(e.endsAt === null || e.endsAt > NOW).toBe(true);
+    }
+  });
+
+  test("still reads the other Fandom template", async () => {
+    // The branch is additive: r1999 must be untouched by it.
+    expect((await runAdapter(adapter("r1999-fandom-events"),
+      "fixtures/r1999/fandom-events-2026-08-17")).length).toBeGreaterThan(0);
+  });
+});
+

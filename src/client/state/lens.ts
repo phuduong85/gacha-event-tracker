@@ -39,28 +39,36 @@ export function outstanding<T extends Row>(
 }
 
 /**
- * The single row closest to expiring.
+ * The rows closest to expiring, soonest first.
  *
- * Reads the minimum rather than taking the first row, because the list it is
- * given is sorted by whatever mode the reader chose — under "doing first" the
- * head of the list is what they are partway through, which is not what a panel
- * headed "next to expire" is claiming to show.
+ * Ordered here rather than taken off the top of the list, because the list it
+ * is given is sorted by whatever mode the reader chose — under "doing first"
+ * the head of the list is what they are partway through, which is not what a
+ * panel headed "next to expire" is claiming to show.
  *
- * An event with no announced end can only ever be the answer when nothing else
- * is running: it is real, but it is not a deadline.
+ * An event with no announced end sorts behind every dated one however long it
+ * has been running: it is real, but it is not a deadline, and it can only
+ * surface here once the deadlines run out.
+ */
+export function nextToExpire<T extends Row>(
+  rows: readonly T[],
+  count: number,
+): T[] {
+  const dated = rows
+    .filter((r) => r.clock.msRemaining !== null)
+    .sort((a, b) => (a.clock.msRemaining ?? 0) - (b.clock.msRemaining ?? 0));
+  const undated = rows.filter((r) => r.clock.msRemaining === null);
+  return [...dated, ...undated].slice(0, Math.max(0, count));
+}
+
+/**
+ * The single row closest to expiring — the headline's own event.
+ *
+ * One definition, asked for one row, so the big countdown and the lines under
+ * it can never disagree about which deadline is next.
  */
 export function firstToExpire<T extends Row>(rows: readonly T[]): T | null {
-  let best: T | null = null;
-  let bestMs = Infinity;
-  for (const row of rows) {
-    const ms = row.clock.msRemaining;
-    if (ms === null) continue;
-    if (ms < bestMs) {
-      best = row;
-      bestMs = ms;
-    }
-  }
-  return best ?? rows[0] ?? null;
+  return nextToExpire(rows, 1)[0] ?? null;
 }
 
 /**

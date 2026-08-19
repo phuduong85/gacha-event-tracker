@@ -12,41 +12,13 @@
     <meta name="theme-color" content="#12141c" />
 
     <!--
-      Picks the theme before the stylesheet paints anything, so a reader who
-      chose "light" never sees a flash of the dark default first. Inline and
-      blocking, ahead of styles.css, on purpose: the app bundle (main.js) does
-      this properly via useTheme, but that runs after React mounts, which is
-      too late to prevent the flash this exists to avoid.
+      This page ships dark and offers light; both are drawn deliberately, and
+      neither wants a third party guessing at one from the other.
 
-      Reads state/storage.ts's key and state/usePrefs.ts's Prefs shape by
-      hand rather than importing them — this has to be inline HTML, not a
-      module, so there is nothing to import. If either changes shape, update
-      the literal below to match.
-    -->
-    <script>
-      (function () {
-        try {
-          var raw = localStorage.getItem("gacha-tracker:v1:prefs");
-          var theme = raw ? JSON.parse(raw).theme : "system";
-          var resolved =
-            theme === "light" || theme === "dark"
-              ? theme
-              : matchMedia("(prefers-color-scheme: light)").matches
-                ? "light"
-                : "dark";
-          document.documentElement.dataset.theme = resolved;
-        } catch (e) {
-          // Corrupt storage or a disabled localStorage (private mode). The
-          // dark default in styles.css is what renders either way.
-        }
-      })();
-    </script>
-
-    <!--
       color-scheme tells the browser (and well-behaved extensions) which
       rendering is intended, so form controls and scrollbars come out matching
       it and nothing tries to synthesise the other theme. "dark light" rather
-      than a fixed value because the script above already decided which one
+      than a fixed value because the script below already decides which one
       this load actually is.
 
       darkreader-lock is Dark Reader's documented opt-out. This app now ships
@@ -57,6 +29,41 @@
     -->
     <meta name="color-scheme" content="dark light" />
     <meta name="darkreader-lock" />
+
+    <!--
+      The theme, before first paint.
+
+      Dark is the default and needs nothing: it is what the stylesheet says with
+      no attribute set. A reader who chose light is the case this exists for —
+      without it they get a dark page for as long as the bundle takes to arrive
+      and mount, on every single load, which is a flash of the thing they
+      switched off.
+
+      It reads the same stored key as the app (`state/storage.ts`) and applies
+      the same attribute (`state/theme.ts`), and it cannot import either, so a
+      test pins the three copies together. Wrapped in try/catch and doing
+      nothing on failure: a reader with storage disabled gets the default theme,
+      never a blank page.
+    -->
+    <script>
+      (function () {
+        try {
+          var prefs = JSON.parse(
+            localStorage.getItem("gacha-tracker:v1:prefs") || "{}",
+          );
+          var light =
+            prefs.theme === "light" ||
+            (prefs.theme === "system" &&
+              window.matchMedia("(prefers-color-scheme: light)").matches);
+          if (!light) return;
+          document.documentElement.dataset.theme = "light";
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute("content", "#edf0f7");
+        } catch (e) {
+          /* No stored preference we can read: the default stands. */
+        }
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

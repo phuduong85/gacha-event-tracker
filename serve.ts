@@ -50,6 +50,12 @@ export const VALID_GAME_IDS = [
   "p5x",
   "r1999",
   "ptn",
+  "holodori",
+  "gfl2",
+  "stellasora",
+  "czn",
+  "uma",
+  "nikke",
 ] as const;
 
 const ICON_UPLOAD_PASSWORD = process.env.ICON_UPLOAD_PASSWORD ?? null;

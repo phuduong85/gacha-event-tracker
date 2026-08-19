@@ -20,8 +20,14 @@ import { readerInstant, type EventDraft } from "../state/useCustom.ts";
  * instead of us.
  */
 
-/** Enough hues to tell lanes apart, none of them colliding with a tracked game. */
-const HUES = [
+/**
+ * Enough hues to tell lanes apart, none of them colliding with a tracked game.
+ *
+ * Stored raw, as picked. What a light-mode reader sees is a darkened reading of
+ * these (`readableHue`), for the same reason the tracked games get one — the
+ * palette was struck against the dark ground.
+ */
+export const CUSTOM_HUES = [
   "#C74B50",
   "#E08A3C",
   "#D9C34A",
@@ -52,7 +58,7 @@ export function GameForm({
   onCancel: () => void;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
-  const [hue, setHue] = useState(initial?.hue ?? HUES[0]!);
+  const [hue, setHue] = useState(initial?.hue ?? CUSTOM_HUES[0]!);
   const valid = name.trim().length > 0 && name.trim().length <= 40;
 
   return (
@@ -77,7 +83,7 @@ export function GameForm({
 
       <p className={`${labelClass()} mt-3`}>Lane colour</p>
       <div className="mt-1.5 flex flex-wrap gap-1.5">
-        {HUES.map((h) => (
+        {CUSTOM_HUES.map((h) => (
           <button
             key={h}
             type="button"

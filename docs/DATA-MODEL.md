@@ -10,7 +10,7 @@ import { z } from "zod";
 
 export const GameId = z.enum([
   "genshin", "hsr", "zzz", "wuwa", "arknights", "endfield", "nte", "nikki", "p5x", "r1999",
-  "ba",
+  "ba", "fgo", "holodori", "gfl2", "stellasora", "czn", "uma", "nikke",
 ]);
 
 export const EventType = z.enum([
@@ -78,6 +78,23 @@ false`, `regionEnds: null`. Story and login events end at each region's daily re
 true`, with `regionEnds` carrying the three resolved UTC instants. The client picks one using the
 user's stored region (PRD F5). Collapsing these into a single timestamp loses up to 13 hours of
 accuracy and will make the countdown wrong for two thirds of users.
+
+**`startPrecision` / `endPrecision`, and what 00:00Z means.** A source that prints a calendar date
+and no time of day gets `"day"` precision, and the instant stored alongside it is that date at
+00:00Z. That timestamp is a **placeholder for "somewhere in this day", not a claim that the day
+begins at UTC midnight** — the parser has declined to invent a time, exactly as it declines to
+invent a date. Nothing downstream may read it as an instant: `clockFor` in `src/shared/time.ts`
+resolves a day-precision boundary to the reset that opens that game-day on the reader's server
+(`dayStartMs`), which is the same clock `daily.ts` keys every tick by, and the countdown and the
+detail sheet both run off that. Read literally instead, the stored value expires an event up to nine
+hours early — the whole of Asia and Europe — which is how a Wuthering Waves event dated "August 19"
+was called over three hours before the game ended it.
+
+Two boundaries are exempt, for the same reason in both directions. A `regionEnds` value is taken
+verbatim: that map only exists because a source published a timer per server, so it is already the
+instant, and re-anchoring it would throw a stated fact away. And an event the reader typed in
+(`extractionMethod: "manual"`) is taken verbatim too: `readerInstant` resolved it to the instant
+*they* meant, in their own timezone, when they entered it.
 
 **`confidence`** is assigned by the parser and adjusted during merge and reconciliation — see
 `docs/INGESTION.md` § Scoring. It records how firmly the sources pinned the event down.
@@ -200,8 +217,43 @@ Namespaced, versioned, and small. Nothing here ever goes to the server.
 "gacha-tracker:v1:progress"     // { [eventId]: { status?, effort?, note?, at } }
 "gacha-tracker:v1:daily"        // { [id]: { days: ["2026-08-15", ...], at } }
 "gacha-tracker:v1:ignored"      // { [eventId]: { at } }  — "stop showing me this"
-"gacha-tracker:v1:prefs"        // { region, hiddenGames[], focusGame, sort, detectDaily,
-                                //   showCompleted, showIgnored, regionConfirmed, onboarded }
+"gacha-tracker:v1:prefs"        // { region, hiddenGames[], knownGames[]?, focusGame, sort, view,
+                                //   timelineDayWidth, timelineGroup, showUpcoming,
+                                //   timelineSplitUpcoming, detectDaily, showCompleted,
+                                //   showIgnored, theme, regionConfirmed, onboarded }
+                                // timelineDayWidth is px per day on the board, stored as the
+                                // measurement rather than a step number and read through
+                                // snapDayWidth — so a value from an older ladder still opens
+                                // on something renderable.
+                                // timelineGroup is "game" (a lane each) or "ending" (every game
+                                // in one deadline queue). Defaults to "game", so shipping it
+                                // moved nobody's board; see PRD F1.
+                                // showUpcoming shows events that have not started yet, in
+                                // BOTH views — the board plots them, the checklist keeps its
+                                // "Not started yet" section. Defaults to false; set from
+                                // settings alongside showCompleted / showIgnored, which is the
+                                // same question. See PRD F1.
+                                // It was named timelineUpcoming while it governed the board
+                                // alone. `adoptRenamed` in usePrefs.ts carries a stored old
+                                // value across on load — nothing is lost by dropping it, since
+                                // this is one blob under one key rather than a key space, but
+                                // resetting a reader's answer for them is not nothing either.
+                                // A stored new name always wins, so it cannot overwrite a
+                                // fresher answer with a stale one.
+                                // timelineSplitUpcoming keeps those events in their own block
+                                // under a "Not started yet" heading (true, the default) or puts
+                                // them in one deadline order with the running ones (false).
+                                // The board only: the checklist splits them into a section of
+                                // its own either way. Read only when showUpcoming is on, but
+                                // stored regardless, so switching that back on restores the
+                                // answer given. PRD F1.
+                                // knownGames is every lane the reader has been offered. Absent
+                                // means unrecorded, not "offered nothing" — see PRD F8; a lane
+                                // missing from it is new to them and arrives switched off.
+                                // theme is "dark" | "light" | "system", defaulting to dark — see
+                                // PRD F15. It is read by the app *and* by a pre-paint script in
+                                // index.html, which is the only thing outside the client bundle
+                                // that touches a key in this space.
 "gacha-tracker:v1:completions"  // SUPERSEDED — read once to migrate, never written
 ```
 
@@ -260,15 +312,53 @@ reader cannot see.
 | Endfield, Europe | 04:00 | UTC-5 (on the Americas server) | 09:00 | 11:00 / 10:00 |
 | Endfield, Asia / Americas | 04:00 | regional default | 20:00 / 09:00 | — |
 | Reverse: 1999, all regions | **05:00** | UTC-5 (one global server) | 10:00 | 12:00 / 11:00 |
+| hololive Dreams, all regions | 04:00 | UTC+9 (one worldwide server) | 19:00 | 21:00 / 20:00 |
 
-Arknights is the one game whose override covers **all three** regions, and it is not a blanket
-per-game offset of the kind this section warns about below: the game genuinely runs a single Global
-server for every region we model. The offset is read off the source rather than assumed — every
-ending event on arknights.wiki.gg carries an exact end of `10:59:59Z`, which is `03:59:59` at UTC-7,
-one second before a 04:00 reset.
+Arknights and hololive Dreams are the games whose override covers **all three** regions, and neither
+is a blanket per-game offset of the kind this section warns about below: both genuinely run a single
+worldwide server for every region we model. Arknights' offset is read off the source rather than
+assumed — every ending event on arknights.wiki.gg carries an exact end of `10:59:59Z`, which is
+`03:59:59` at UTC-7, one second before a 04:00 reset.
 
-Infinity Nikki, P5X and Blue Archive carry **no `resetOffsets` entry**, so they take the regional
-default. That is an assumption, not a verified server map — none of the three sources states one.
+hololive Dreams is read the same way and is the cleaner case of the two, because the source states
+its zone outright: every boundary on holodori.wiki carries `(JST)`, the game launched worldwide
+simultaneously on one service, and `Training Support Missions` ends at `3:59AM JST` — one minute
+before a 04:00 local reset. Only the offset is overridden; the hour is the default. It also cost
+nothing to add, which is the point worth carrying to the next game: an override that arrives with
+the game moves nobody, while the same override added a year later re-labels every tick already
+logged under the old clock. Get it right at introduction or accept a migration.
+
+Nikke is the third game to earn one from the source rather than from habit, after Arknights and
+Reverse: 1999, and it earns `resetHourLocal` too: every schedule column on its wiki is headed
+`Start(UTC+9)` / `End(UTC+9)`, and the rows show where the day turns — a story event ends at
+04:59:59 and the pickup banner replacing it starts at 05:00:00, one second later. So UTC+9 for every
+region, rolling at 05:00 rather than 04:00. It shipped in the same commit as the game, which costs
+nothing while no reader has a day key for it.
+
+Note also that `nikke` and `nikki` are one letter apart and are different games — Goddess of Victory:
+Nikke and Infinity Nikki. Both are the first segment of every completion key their game will ever
+have, so a typo in either direction is silent data loss for real readers.
+
+Infinity Nikki's source changed on 2026-08-19 and its silence changed shape with it: the Fandom wiki
+states a wall clock on every boundary and no zone for it, so there is still nothing to read a server
+map off — the clock is discarded at ingest and only the printed day is published. An offset invented
+here would move real readers' day keys.
+
+Infinity Nikki, P5X, Blue Archive, Chaos Zero Nightmare and Umamusume carry **no `resetOffsets`
+entry**, so they take the regional default. That is an assumption, not a verified server map — none
+of those sources states one. Two of the 2026-08-19 additions are worth separating out, because they
+are silent for different reasons and neither is the usual one:
+
+- **Girls' Frontline 2** states an exact UTC instant on every boundary, so the data is there and
+  still settles nothing: its EN events end at 22:59 (33 of them), 08:59 (11) and 02:59 (5). Arknights
+  and Reverse: 1999 each earned an override from a single boundary the whole page agreed on; three
+  of them is a patch window, not a reset hour.
+- **Stella Sora** states an offset outright — `-07:00` — and that is precisely why it gets no entry.
+  `-07:00` is US Pacific in summer and `-08:00` in winter, so one fixed number is wrong for half the
+  year in either direction. This is the Fate/Grand Order gap, arriving through a source that looks
+  like it answered the question.
+
+
 Blue Archive is the case where the assumption is most likely wrong and still the right entry: the
 game does run one worldwide server, but `bluearchive.wiki` states no time of day and no timezone
 anywhere on the page, so there is no offset to read off it. Confirm these against the games before
@@ -375,7 +465,7 @@ to:
 | Rule | Why |
 |---|---|
 | `endsAt` null pairs with `endPrecision: "unknown"` | The same invariant `GachaEvent` enforces. "I don't know when this ends" is a supported answer for a reader too, and a required one — otherwise entering an unannounced event forces them to invent a date |
-| A date with no time is `"day"` precision, a date with one is `"exact"` | So the UI's existing "accurate to the day only" note is honest about their input as well |
+| A date with no time is `"day"` precision, a date with one is `"exact"` | So the UI's existing "accurate to the day only" note is honest about their input as well. Their day-precision boundary is still *their* instant, though — `readerInstant` puts a start at 00:00 and an end at 23:59:59 in their own timezone, so unlike a parser's placeholder it is never re-anchored to a server reset |
 | `endsAt` must be after `startsAt` | A backwards interval is a typo whoever made it |
 | `hue` must match `#rrggbb` | It reaches a `style` attribute, and an imported file is not necessarily one the reader wrote |
 | `regionScoped` is always false | They entered one instant, not a per-region map. Claiming otherwise would fabricate three timestamps out of one |

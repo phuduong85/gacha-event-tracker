@@ -301,14 +301,17 @@ diagnosis in each item still holds — what changed is whether it has been acted
 |---|---|
 | P0 refresh pipeline | **Diagnosed, half acted on.** game8.co answers a GitHub Actions runner with `202` and a bot-management body, so those eight sources have only ever built from fixtures in CI — see `AGENTS.md` § Scraping conduct, including why it is not to be worked around. The `broken` tier now makes a source failing three cycles fail the run. Step 5 (a build assertion on snapshot age) is **not built** |
 | P1a Arknights | **Done.** `arknights-akwiki-events`, via the new `akwiki` parser |
-| P1b `NextUp` → three | **Not done.** Still one row |
-| P1b cap the long list | **Not done.** No "show all N" expander |
-| P1b persist `view` | **Not done.** Still `useState` in `App.tsx` |
+| P1b `NextUp` → three | **Done** (2026-08-18). One headline and two behind it, off `nextToExpire` |
+| P1b cap the long list | **Done** (2026-08-18). Both sections cap at six with "show all N" — truncation of the view, not a re-sort |
+| P1b persist `view` | **Done** (2026-08-18). `prefs.view`, and the first run now asks which one to open on (PRD F8) |
 | P1b Calendar → Timeline | **Done.** The tab reads "Timeline" |
-| P1c more games | **Done, four of them.** Infinity Nikki, Persona 5: The Phantom X, Reverse: 1999, Blue Archive — one commit each. Of the games named in the thread, Azur Lane and Umamusume are **declined on conduct** rather than pending, and the declined and cleared-but-unbuilt candidates are recorded in `AGENTS.md` § Scraping conduct so they are not re-litigated |
+| P1c more games | **Done, ten of them, and one rebuilt.** Infinity Nikki, Persona 5: The Phantom X, Reverse: 1999, Blue Archive, then Fate/Grand Order and hololive Dreams, then Girls' Frontline 2, Stella Sora, Chaos Zero Nightmare, Umamusume and Nikke (2026-08-19). Of the games named in this thread, **Umamusume is now built** — via Game8, not the declined `uma.moe` — and Azur Lane and Aether Gazer stay declined. **Nikke is built too** (2026-08-19), once its `robots.txt` was read in a browser and turned out to be the standard Fandom file. See `docs/SOURCES.md` § 3. **Infinity Nikki was rebuilt** on a live Fandom source the same day, its Game8 page having been stale since August 2025 — § 11 |
 | P1c roadmap in the colophon | **Not done** |
-| P2 colour and screenshot | **Not done** |
+| P1 games still unserved | Azur Lane, Punishing: Gray Raven, Guardian Tales, Aether Gazer (shutting down), Silver Palace (unreleased). Separately, **Infinity Nikki's source is stale** and has no reachable replacement — `docs/SOURCES.md` § 11 |
+| P2 colour and screenshot | **Layout done** (2026-08-18), colour untouched. The palette was left alone deliberately — the two-axis system was not what made the screenshot read as unfinished, a dense single column on a wide screen was. Past `lg` the page is now a pinned deadline rail beside the lists, the timeline is a board with its axis and names pinned, and the footer and settings are columns. The screenshot still wants reshooting |
 | P2 custom events | **Done.** PRD F13 first, then the code; `mygame:` / `myevent:` key spaces, in the export |
 
-So the outstanding work is P1b's three client changes, the colophon roadmap, the colour pass, and
-P0's build assertion — the cheapest items on the list are the ones still open.
+So the outstanding work is the colophon roadmap, P0's build assertion, and a reshoot of the promo
+screenshot. P1b is closed. The colour pass is open in name only: the palette was examined and left
+alone with the reasoning above, so what is left of P2 is the screenshot, which is now worth taking
+from a wide window.

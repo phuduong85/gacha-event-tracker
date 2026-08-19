@@ -48,11 +48,14 @@ Consequences worth internalising:
 
 | Parser | Site | Sources using it |
 |---|---|---|
-| `game8` | game8.co article calendars | Genshin, Star Rail, Wuthering Waves, ZZZ, Endfield, NTE, Infinity Nikki, Persona 5: The Phantom X |
+| `game8` | game8.co article calendars | Genshin, Star Rail, Wuthering Waves, ZZZ, Endfield, NTE, Persona 5: The Phantom X, Chaos Zero Nightmare, Umamusume |
 | `wikigg` | wiki.gg MediaWiki `mp-event` templates | Endfield |
 | `akwiki` | arknights.wiki.gg's `mrfz-wtable` "Ongoing/upcoming" table | Arknights |
-| `fandom` | Fandom wikis via the MediaWiki `action=parse` API — `Event \| Time Period \| Version` wikitables | Reverse: 1999 |
+| `fandom` | Fandom wikis via the MediaWiki `action=parse` API — four page templates: `Event \| Time Period \| Version` wikitables, FGO's picture-fenced `ONGOING EVENTS` blocks, Nikke's `Event \| Start(UTC+9) \| End(UTC+9)` tables, and Infinity Nikki's `Event \| Duration \| Description \| Type` article-tables | Reverse: 1999, Fate/Grand Order, Nikke, Infinity Nikki |
 | `bawiki` | bluearchive.wiki's rendered `/wiki/Events` — a JP/Global tabber over `Name (EN) \| Start date \| End date \| Notes` wikitables | Blue Archive |
+| `holodoriwiki` | holodori.wiki's rendered `/wiki/Events` — `Current Events` and `Past Events` wikitables over `Event \| Type \| Start Date \| End Date` | hololive Dreams |
+| `iopwiki` | iopwiki.com's `gf-table event-period` tables — `Title \| Period (start/end) \| Server \| Type \| Comment`, one table per event and one row per server | Girls' Frontline 2 |
+| `stellasorawiki` | stellasora.miraheze.org's front-page `Current Banners` module — `<time datetime>` pairs inside `stellasora-home-banner` blocks | Stella Sora |
 
 `wikigg` is the better shape by a distance: it emits ISO timestamps with one timer per server
 region, so its events carry exact precision and real `regionEnds`. Prefer a source like that over a
@@ -73,6 +76,26 @@ rather than parse to zero events. Two page facts drive the rest of it:
   (154 rows, six of them unfinished when the fixture was captured), with no "ongoing" section to
   anchor on. Inclusion is therefore decided against `ctx.now`, the one parser here that does so;
   `akwiki` and `game8` can gate on a heading instead, and should where one exists.
+
+The second Fandom source, Fate/Grand Order, shares the envelope and nothing else, so `fandom` is one
+parser over two templates the way `game8` is one over seven. `canParse` and the parse branch both
+route on the same check, and the differences are worth knowing before touching either:
+
+- **The page is a choice.** `fategrandorder.fandom.com` publishes `Event_List` (Japanese server) and
+  `Event_List_(US)` (English), months apart and cross-linked. The adapter reads the `(US)` one; a
+  test asserts the URL, because this source shipped once off the Japanese page and every date it
+  published was wrong by a server. AGENTS.md § Fandom has the rest.
+- **Sections are fenced by pictures, not headings.** `ONGOING EVENTS`, `FUTURE EVENTS` and
+  `PAST EVENTS` are banner images with the label in a positioned `<div>`. Only the ongoing section
+  is read, and `canParse` asserts both dividers bounding it.
+- **The other two sections are undatable, which is why they are skipped rather than filtered.**
+  Upcoming rows give a month and no day; the 111 past tables state no year at all — unlike the
+  Japanese page's, which carry it in a `MMYYYY` table id.
+- **Durations name a zone but no clock** (`August 12, 2026 ~ August 26, 2026 PDT`), so the stated
+  calendar day is kept as-is: there is no time of day for a UTC conversion to anchor to, and the
+  start's day is half the event ID.
+- **`(US)` is stripped from the title and kept in the URL.** It disambiguates the English article
+  from the Japanese one, so it belongs to the article's name and not to the event's.
 
 `bawiki` is the mirror image of `fandom`: same MediaWiki software, opposite conclusion about which
 surface to read. bluearchive.wiki is Miraheze, whose `robots.txt` disallows `/w/` and `/*?action=`,
@@ -110,7 +133,7 @@ All live in `src/ingest/dates.ts`, each returning null rather than inferring any
 |---|---|---|
 | `parseMonthDayYear` | `August 12, 2026` | Genshin detail rows |
 | `parseMonthDayRange` | `August 12 - September 21, 2026` (year on the end only) | Genshin, NTE |
-| `parseFullRange` | `Aug. 14, 2026 - Aug. 24, 2026` (a year each side) | Star Rail, Wuthering Waves |
+| `parseFullRange` | `Aug. 14, 2026 - Aug. 24, 2026` (a year each side) | Star Rail, Wuthering Waves, Fate/Grand Order |
 | `parseShortSlashRange` | `08/09/26 - 08/30/26` | Endfield |
 | `parseSlashDateTimeRange` | `2021/01/16 04:00 - 2021/01/31 03:59` | Genshin past events |
 | `parseLabelledStartEnd` | `Start: January 24, 2025 End: Permanent` | Infinity Nikki |
@@ -118,7 +141,31 @@ All live in `src/ingest/dates.ts`, each returning null rather than inferring any
 | `parseYearFirstSlashRange` | `2026/07/30 – 2026/08/20` (year first, so field order is not inferred) | Arknights |
 | `parseOrdinalDateTimeRange` | `November 9th, 05:00 - December 4th, 2023, 04:59 (UTC-5)` (ordinal days, stated offset) | Reverse: 1999 |
 | `parseIsoDay` | `2026-08-04` (one boundary per column, so nothing to split) | Blue Archive |
+| `parseSlashClockZone` | `08/17/2026 8:00PM (JST)` (one boundary per column, 12-hour clock, **named** zone) | hololive Dreams |
+| `parseIsoClockRangeUtc` | `2026-08-06 13:00 - 2026-08-26 22:59 (UTC)` (whole range in one cell, **zone required**, nothing converted) | Girls' Frontline 2 |
+| `parseIsoOffsetInstant` | `2026-08-03T21:00-07:00` (a machine-readable `<time datetime>` attribute; **offset required**) | Stella Sora |
+| `parseDayMonthYearClock` | `12 August 2026`, `10 September 202604:59:59` (day-first; the offset comes from the **column header**, and a clockless boundary keeps its printed day) | Nikke |
+| `parseZonelessClockRange` | `July 20, 2026 04:00 – August 10, 2026 03:49` (reads the clock and **discards** it — the page states no zone, so only the printed day is publishable) | Infinity Nikki |
 | `parseOpenRange` | `Jul. 24, 2026 - End of 4.6`, `July 10, 2026 - Permanent` | Star Rail, Wuthering Waves |
+
+**A day-precision result is 00:00Z, and that is a placeholder rather than a time.** Every reader
+above returns `precision: "day"` when the source printed no clock, and stores the date at UTC
+midnight because it has to store *something*. It is not a statement that the event begins or ends
+then, and nothing may count down to it literally: `clockFor` resolves a day-precision boundary to
+that game-day's server reset for the reader's region (`docs/DATA-MODEL.md` § Field notes).
+
+**No parser may store a resolved boundary, and three of them must read one to decide inclusion.**
+The stored value stays the printed day at 00:00Z: resolving it here would need a region the parser
+does not have, and would bake one reader's server into the feed everybody downloads. But a parser
+whose page carries no "ongoing" heading it can trust decides currency against `ctx.now` itself —
+`bawiki.ts`, and the Fate/Grand Order and Infinity Nikki branches of `fandom.ts` — and comparing the
+placeholder to `now` retires a row at UTC midnight, hours before `clockFor` calls it over for
+anybody. The reader does not see a stale row; they watch the deadline they were counting down to
+disappear on its last day, which is the silent drop AGENTS.md § Working on parsers calls the
+dangerous failure. So those three ask `latestBoundaryMs` (`src/shared/time.ts`) when the boundary is
+day-precision: the last region's reset, and therefore the instant the row is history for every
+reader rather than for the earliest of them. Being generous by nine hours costs one expired row at
+the bottom of a list; being strict costs a live one.
 
 `parseOpenRange` is tried last because it is the most permissive — it accepts any leading full date
 and reports no end.
@@ -175,6 +222,7 @@ produced it.
 | Label/value or column tables with full dates including a year | Good — an existing parser may already handle it |
 | Dates without a year, or no end date at all | **Unsupportable** — yields nothing rather than guessing |
 | Free-form prose with no table structure | Find a different source |
+| One wiki, two servers' schedules | **Read which one before writing anything.** Three sources here publish both: `akwiki` in a CN column, `bawiki` in a JP tab, `fategrandorder.fandom.com` on a whole separate page that says so in its first sentence. Every one of them parses cleanly and every one of them is months wrong for our readers |
 | A clean table whose newest row is months old | **Not a source, an archive.** Check the *latest* date before writing anything: `bluearchive.fandom.com` parses perfectly and yields zero live events, which shows up as an empty lane and a permanently rejected snapshot rather than as an error |
 
 Game8 uses at least seven page templates, a game's page may use any of them, and one page may mix
@@ -196,8 +244,14 @@ several:
    repeats each live event under its own `h3` with `Start Date` / `End Date` rows and a paragraph of
    prose; those corroborate the dates and supply the blurb the flat table lacks.
    *(Persona 5: The Phantom X)*
+8. **Two schedules side by side in one `<table>`**, under a spanning label row —
+   `Standard Banners | Banner | Rating | Availability | Paid Banners | Banner | …`, with the real
+   header on the row below and three-cell data rows under that. The label row is *plausible*: it
+   contains both column words, resolves, and puts the range at an index no data row has, so the
+   table yields nothing at all with no error. `readColumnTable` therefore decides the header by what
+   it produces — row 1 is tried **only when row 0 produced nothing**. *(Umamusume)*
 
-Shapes 1, 2, 4, 5, 6 and 7 are handled. Before assuming a new Game8 page will work, dump its heading/table
+Shapes 1, 2, 4, 5, 6, 7 and 8 are handled. Before assuming a new Game8 page will work, dump its heading/table
 structure and check which shape it uses — and check **every** table, not just the obvious one.
 Endfield was written off as undatable on a first pass that only inspected its `Duration` rows; its
 two real events were in a table further down.
@@ -216,6 +270,24 @@ section but must never claim the event title.
 - Honor `robots.txt`; cache parsed robots per host for 24h. **Fail closed** — a `robots.txt` that
   5xxs or times out means "do not fetch", because a permission we could not read is not a
   permission we have. A 404 means no restrictions.
+- **`--force` sets the 6h floor aside for one run**, and nothing else: conditional headers still go
+  out (so an unchanged page is a `304`, not a re-serve), per-host spacing still applies, robots still
+  decides, and there are still no retries. A source that was not due and is *also* disallowed stays
+  skipped, for the reason that actually matters. Refused under CI — a schedule that forces every
+  cycle is a shorter interval with extra steps. Every source asked early is listed in
+  `summary.forced` and warned about; a run that was due anyway is never reported as forced, because a
+  summary that cried "forced" on an ordinary run would train the reader to ignore the word.
+- **One narrow exception, opt-in per run: `--assume-robots-on-403`.** Fandom answers a datacentre
+  address `403` on `/robots.txt` itself while `api.php?action=parse` answers our own User-Agent with
+  a `200`, so the gate fails closed and four sources can never refresh — even though their rules are
+  known, because a person read them in a browser and wrote them into AGENTS.md § Scraping conduct.
+  The flag makes the run proceed on that recorded permission. Three things bound it: it applies to
+  `403` **only** (a 401, a 5xx or a soft 404 are still "we do not know"); it never overrides a
+  `robots.txt` we *could* read, so a file that disallows us still says no; and it is refused under
+  CI, because it stands in for a human and there is none on a runner. Every host it applied to is
+  named in the run's warnings and in `summary.assumedRobots` — an override that reports nothing is
+  one nobody withdraws. It changes no other obligation: still one request per source, still six
+  hours apart, still spaced per host.
 - 20s timeout. **No retries**: a retry is a second request, and AGENTS.md § Scraping conduct says
   one per source per cycle. A failed source waits for the next cycle instead.
 - **Only `200` is a page** (plus `304` for "unchanged"). Not `response.ok` — that admits the whole
@@ -297,15 +369,25 @@ Only meaningful when a game has more than one source; a single-source game passe
 
 `mergeEvents(groups)` compares events across sources:
 
-1. **Same ID** → same event; keep the higher-confidence copy.
-2. **Near match** — same game, title similarity ≥ 0.80, starts within 24h — → same event under
-   different titles; keep the higher-confidence copy.
+1. **Same ID** → same event; keep the higher-confidence copy. Applies within a source as well as
+   across sources — an identical id is the same row seen twice, whatever it is called.
+2. **Near match** — **different sources**, same game, title similarity ≥ 0.80, starts within 24h —
+   → same event under different titles; keep the higher-confidence copy.
 3. **Otherwise** → distinct events; keep both.
 
 Title similarity alone would merge a rerun with its original, since reruns reuse the name. The
 start-date proximity check is the actual guard; the title threshold is deliberately loose (0.80) so
 that "Stygian Onslaught" and "Stygian Onslaught Event" collapse into one row rather than showing
 the user a duplicate.
+
+**Near matching is cross-source only, and that restriction is load-bearing** (2026-08-19). Fusing
+two rows from *one* page overrules a distinction the publisher made on purpose, and the loose
+threshold that makes rule 2 useful across sources makes it actively wrong within one: Game8's
+Umamusume banner list runs `3 Star Guaranteed 1.5 Anniversary Scout (Character)` and `(Support)`
+concurrently, titles differing by a single parenthetical and starting the same day. That scores far
+above 0.80, and fusing them dropped a live banner off the calendar with nothing anywhere reporting
+it — a silent drop, which § Silent drops ranks as the dangerous failure. Rule 1 still fuses repeats
+within a source, so nothing is duplicated; the parsers dedupe by id before merge is reached anyway.
 
 **Agreement raises confidence (+0.10) only across different `sourceId`s.** The same row seen twice
 in one document is not corroboration.

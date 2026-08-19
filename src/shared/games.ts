@@ -91,6 +91,53 @@ export const GAMES: Record<GameId, GameMeta> = {
   // recent edit by over a year, so it is not current either. Add both only
   // once a real source states the UTC offset.
   ptn: { id: "ptn", name: "Path to Nowhere", short: "PTN", hue: "#8FCC3D", studio: "Aisno Games", dailyTasks: "Daily Dispatch" },
+  // hololive Dreams runs a single worldwide service on a Japanese clock, and
+  // both halves of that come from the source rather than from habit: every
+  // boundary on holodori.wiki is stated once, in `(JST)`, with no per-region
+  // column anywhere, and the game launched worldwide simultaneously. The reset
+  // hour is evidenced the way Arknights' is — `Training Support Missions` ends
+  // at 3:59AM JST, one minute before a 04:00 local reset — so the default hour
+  // stands and only the offset is overridden. Setting it now costs nothing: no
+  // reader has a day key for a game the app has never shipped, whereas adding
+  // the same override later would re-label ticks they had already logged.
+  holodori: { id: "holodori", name: "hololive Dreams", short: "holodori", hue: "#5FD3F3", studio: "QualiArts / COVER", dailyTasks: "Daily missions, stamina", resetOffsets: { asia: 9, america: 9 } },
+  // No `resetOffsets`, and unusually the source is not silent here — it is
+  // ambiguous, which comes to the same answer. Every IOP Wiki row states an
+  // exact UTC instant, but the EN boundaries land on three different clocks:
+  // 33 events end at 22:59, 11 at 08:59 and 5 at 02:59. Arknights and
+  // Reverse: 1999 each earned an override from a single boundary the whole page
+  // agreed on, one minute or second before a 04:00 local reset; three of them
+  // is a patch window, not a reset hour. So this game takes the regional
+  // default until something states its server clock outright.
+  gfl2: { id: "gfl2", name: "Girls' Frontline 2: Exilium", short: "GFL2", hue: "#A9C23F", studio: "Sunborn", dailyTasks: "Daily missions" },
+  // No `resetOffsets`, and this is the Fate/Grand Order gap rather than the
+  // Blue Archive one: the source states an offset on every boundary, and the
+  // offset it states is `-07:00` in August. That is US Pacific in summer, which
+  // means it is `-08:00` in winter — one fixed number is wrong for half the year
+  // in either direction, and `resetOffsets` holds one fixed number. The page
+  // also never lands its boundaries on a single local hour (20:00 and 21:00
+  // starts, 12:59 and 19:59 ends), so there is no reset hour to read off it
+  // either. See the fgo entry below for the same reasoning at more length.
+  stellasora: { id: "stellasora", name: "Stella Sora", short: "Stella Sora", hue: "#2E9E9E", studio: "Yostar", dailyTasks: "Daily missions" },
+  // No `resetOffsets`: the source is Game8, which states day-precision prose
+  // and no clock at all — the same silence p5x has, and the same answer.
+  czn: { id: "czn", name: "Chaos Zero Nightmare", short: "CZN", hue: "#B84A9C", studio: "Smilegate", dailyTasks: "Daily missions" },
+  // No `resetOffsets`. The source's own column is headed `Availability (UTC)`,
+  // which states the zone the *dates* are in and says nothing about where the
+  // server's day rolls — and every row on it is a bare date anyway, with no
+  // time of day to read a reset out of. Same silence as p5x and czn.
+  // Nikke runs one worldwide server on a Japanese clock that rolls its day at
+  // **05:00**, not 04:00 — and both halves come from the source rather than
+  // from habit. Every schedule column on the wiki is headed `Start(UTC+9)` /
+  // `End(UTC+9)`, and the rows themselves show the boundary: story events end
+  // at 04:59:59 and the pickup banner replacing them starts at 05:00:00, one
+  // second apart. That is the Reverse: 1999 evidence pattern exactly.
+  //
+  // Set in the same commit that ships the game, which costs nothing now and
+  // could not be added later without re-labelling day keys readers had already
+  // logged ticks under.
+  nikke: { id: "nikke", name: "Goddess of Victory: Nikke", short: "Nikke", hue: "#E4572E", studio: "Shift Up", dailyTasks: "Daily missions, outpost", resetOffsets: { asia: 9, america: 9 }, resetHourLocal: 5 },
+  uma: { id: "uma", name: "Umamusume: Pretty Derby", short: "Umamusume", hue: "#6FBF44", studio: "Cygames", dailyTasks: "Daily races, missions" },
 };
 
 export const GAME_LIST: GameMeta[] = Object.values(GAMES);

@@ -8,12 +8,15 @@ import {
   isDaily,
   msUntilReset,
   nextResetMs,
-  resetHourFor,
-  RESET_HOUR_LOCAL,
   resolveDaily,
   streakOf,
 } from "../src/shared/daily.ts";
-import { DAY, HOUR } from "../src/shared/time.ts";
+import {
+  DAY,
+  HOUR,
+  resetHourFor,
+  RESET_HOUR_LOCAL,
+} from "../src/shared/time.ts";
 
 const at = (iso: string) => Date.parse(iso);
 

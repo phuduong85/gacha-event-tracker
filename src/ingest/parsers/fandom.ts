@@ -1,6 +1,6 @@
 import { eventId, type GachaEvent } from "../../shared/schema.ts";
-import { parseOrdinalDateTimeRange } from "../dates.ts";
-import { text } from "../html.ts";
+import { parseDayMonthYearClock, parseOrdinalDateTimeRange } from "../dates.ts";
+import { decodeEntities, text } from "../html.ts";
 import type { ParseContext } from "../adapters/types.ts";
 import { inferType } from "./game8.ts";
 import type { SourceParser } from "./types.ts";
@@ -59,6 +59,31 @@ const EDIT_SECTION = /<span\b[^>]*class="[^"]*mw-editsection[^"]*"[^>]*>[\s\S]*?
  */
 const ARTICLE_LINK = /<a\b[^>]*href="(\/wiki\/(?!Special:)[^"#?]+)"/i;
 
+/**
+ * The Nikke wiki's schedule tables — the second template this parser reads, and
+ * the only one that states its timezone in the *header* rather than the cell:
+ * `Event | Start(UTC+9) | End(UTC+9) | Archived(?)` for story events, and
+ * `Nikke | Start(UTC+9) | End(UTC+9)` for pickup banners.
+ *
+ * That header is the safety property rather than a convenience. No date on this
+ * page carries an offset next to it, so a table whose Start/End columns stop
+ * naming a zone is one this reader must refuse rather than read as UTC — the
+ * Blue Archive hazard, arriving one column to the left.
+ */
+const NIKKE_ZONE_HEADER = /^(start|end)\s*\(utc([+-]\d{1,2})\)$/;
+
+/**
+ * A title cell's fallback, for when the wiki has no image for the event yet.
+ *
+ * Both the Nikke and Infinity Nikki pages render every event title as an image,
+ * with the name recoverable from the wrapping `<a title="Project Matis">`. The
+ * newest row is the one most likely to have no image uploaded, and then the
+ * cell is a red link reading `File:Persona on Frontline logo.png`. A reader that
+ * only understood `<a title>` would silently drop the single most important row
+ * on either page and publish a calendar missing what is on right now.
+ */
+const FILE_TITLE = /^File:\s*(.+?)\s*(?:logo)?\.(?:png|jpe?g|gif|webp)$/i;
+
 /** The rendered HTML inside an `action=parse` response, or null. */
 export function renderedHtml(body: string): string | null {
   let payload: unknown;
@@ -69,10 +94,190 @@ export function renderedHtml(body: string): string | null {
   }
 
   const html = (payload as { parse?: { text?: unknown } } | null)?.parse?.text;
-  if (typeof html === "object" && html !== null && '*' in html) {
-    return (html as any)['*'] as string;
-  }
   return typeof html === "string" ? html : null;
+}
+
+/**
+ * True for the Nikke wiki's `Event` page, and the gate on the branch below.
+ *
+ * Asserts a schedule table whose Start/End headers name a zone, which is the
+ * one fact the reader cannot get from anywhere else on the page.
+ */
+function isNikkeEventPage(rendered: string): boolean {
+  return nikkeTables(rendered).length > 0;
+}
+
+interface NikkeTable {
+  body: string;
+  startIdx: number;
+  endIdx: number;
+  offsetMs: number;
+  /** Pickup banners head their title column `Nikke`; story events, `Event`. */
+  banner: boolean;
+  /** That first header, unsquashed — the table's own name for its rows. */
+  label: string;
+}
+
+/** Every table on the page whose Start/End columns state their offset. */
+function nikkeTables(rendered: string): NikkeTable[] {
+  const out: NikkeTable[] = [];
+
+  for (const table of rendered.matchAll(/<table\b[^>]*>([\s\S]*?)<\/table>/gi)) {
+    const body = table[1] ?? "";
+    const headers = [...body.matchAll(/<th\b[^>]*>([\s\S]*?)<\/th>/gi)].map((h) =>
+      text(h[1] ?? "").toLowerCase().replace(/\s+/g, ""),
+    );
+
+    let startIdx = -1;
+    let endIdx = -1;
+    let offsetMs: number | null = null;
+    headers.forEach((h, i) => {
+      const m = NIKKE_ZONE_HEADER.exec(h);
+      if (m === null) return;
+      // Both columns must agree on the offset; a table stating two different
+      // ones is a shape this reader does not understand.
+      const hours = Number(m[2]);
+      const ms = hours * 60 * 60 * 1000;
+      if (offsetMs !== null && offsetMs !== ms) return;
+      offsetMs = ms;
+      if (m[1] === "start") startIdx = i;
+      else endIdx = i;
+    });
+
+    if (startIdx < 0 || endIdx < 0 || offsetMs === null) continue;
+
+    const first = headers[0] ?? "";
+    const label = text(
+      /<th\b[^>]*>([\s\S]*?)<\/th>/i.exec(body)?.[1] ?? "",
+    );
+    out.push({
+      body,
+      startIdx,
+      endIdx,
+      offsetMs,
+      banner: first === "nikke",
+      label,
+    });
+  }
+
+  return out;
+}
+
+/**
+ * The Nikke wiki's story events and pickup banners.
+ *
+ * Both tables are read because both are schedules our readers act on, and both
+ * state their zone the same way. What differs is how much they pin down: a
+ * story event's start is a bare date and its end carries a clock, while a
+ * banner usually carries one on both. `parseDayMonthYearClock` keeps a
+ * clockless boundary on the day the page printed rather than shifting it nine
+ * hours into the previous one — the Fate/Grand Order rule, and here it matters
+ * doubly because the start's day is half an event ID.
+ */
+function parseNikkeEvents(rendered: string, ctx: ParseContext): GachaEvent[] {
+  const nowMs = Date.parse(ctx.now);
+  const out: GachaEvent[] = [];
+  const seen = new Set<string>();
+
+  for (const table of nikkeTables(rendered)) {
+    for (const row of table.body.matchAll(ROW)) {
+      const cells = [...(row[1] ?? "").matchAll(CELL)].map((c) => ({
+        tag: c[1] ?? "",
+        html: c[2] ?? "",
+      }));
+      if (cells.length === 0 || cells.some((c) => c.tag === "h")) continue;
+
+      const titleCell = cells[0]?.html ?? "";
+      const title = nikkeTitle(titleCell);
+      if (title === null) continue;
+
+      const start = parseDayMonthYearClock(
+        text(cells[table.startIdx]?.html ?? ""),
+        table.offsetMs,
+      );
+      if (start === null) continue;
+
+      const end = parseDayMonthYearClock(
+        text(cells[table.endIdx]?.html ?? ""),
+        table.offsetMs,
+      );
+      if (end === null || end.iso <= start.iso) continue;
+
+      // Five year-tabbed tables of history sit alongside the live one, so
+      // inclusion is decided against ctx.now as it is everywhere else here.
+      if (Date.parse(end.iso) < nowMs) continue;
+
+      const id = eventId(ctx.game, title, start.iso);
+      if (seen.has(id)) continue;
+      seen.add(id);
+
+      const href = ARTICLE_LINK.exec(titleCell)?.[1];
+
+      out.push({
+        id,
+        game: ctx.game,
+        title,
+        // The table names what its rows are — "Costume Gacha", "Popularity
+        // Poll" — which the title alone never does. A pickup table is a
+        // character banner outright; everything else goes through the shared
+        // vocabulary with that label alongside the title.
+        type: table.banner ? "banner" : inferType(`${title} ${table.label}`),
+        summary: null,
+        startsAt: start.iso,
+        startPrecision: start.precision,
+        endsAt: end.iso,
+        endPrecision: end.precision,
+        // One worldwide server on a single stated offset, and the page draws no
+        // distinction between regions.
+        regionScoped: false,
+        regionEnds: null,
+        sourceUrl:
+          href === undefined
+            ? ctx.sourceUrl
+            : new URL(href, ctx.sourceUrl).toString(),
+        sourceId: ctx.sourceId,
+        status: "published",
+        // Docked where the source pinned less down: a start with no clock is a
+        // day, not an instant.
+        confidence: start.precision === "day" ? 0.9 : 0.95,
+        extractionMethod: "parser",
+        version: 1,
+        firstSeenAt: ctx.now,
+        updatedAt: ctx.now,
+      });
+    }
+  }
+
+  return out;
+}
+
+/** A title cell's event name: the link's title, or the file name behind it. */
+function nikkeTitle(cell: string): string | null {
+  // `decodeEntities`, not `text`: this comes out of an attribute value, which
+  // never passes through the tag stripper, so `&#39;` would otherwise survive
+  // into the title and from there into the event ID.
+  const linked = attributeTitle(cell);
+  const raw = (linked ?? text(cell)).trim();
+  if (raw.length === 0) return null;
+
+  // "File:Persona on Frontline logo.png" -> "Persona on Frontline". Applied to
+  // the link title too: a red link carries the file name in both places.
+  const named = FILE_TITLE.exec(raw)?.[1];
+  const title = (named ?? raw).trim();
+  return title.length === 0 ? null : title;
+}
+
+/**
+ * A link's `title` attribute, decoded.
+ *
+ * Attribute values never pass through `text()`, so an apostrophe arrives as
+ * `&#39;` — and an undecoded title becomes an undecoded slug, which is a
+ * localStorage key. The sanitiser at the ingest boundary repairs exactly this,
+ * and a parser that needs repairing on its own fixture is a parser with a bug.
+ */
+function attributeTitle(cell: string): string | undefined {
+  const raw = /<a\b[^>]*title="([^"]*)"/i.exec(cell)?.[1];
+  return raw === undefined ? undefined : decodeEntities(raw);
 }
 
 export function parseFandomEventsPage(
@@ -81,6 +286,18 @@ export function parseFandomEventsPage(
 ): GachaEvent[] {
   const rendered = renderedHtml(body);
   if (rendered === null) return [];
+
+  // Two Fandom page templates, one host family — the same split `game8.ts`
+  // carries for seven shapes. `canParse` asserts the Nikke shape, so a
+  // template change fails the source loudly instead of routing a Nikke page
+  // through the `Time Period` reader and emptying the lane.
+  if (isNikkeEventPage(rendered)) {
+    return parseNikkeEvents(rendered, ctx).sort((a, b) =>
+      a.startsAt === b.startsAt
+        ? a.id.localeCompare(b.id)
+        : a.startsAt.localeCompare(b.startsAt),
+    );
+  }
 
   const flat = rendered.replace(EDIT_SECTION, "").replace(/\s+/g, " ");
   const nowMs = Date.parse(ctx.now);
@@ -180,7 +397,10 @@ export const fandomParser: SourceParser = {
     // the Cloudflare interstitial the plain page serves would all land here.
     const rendered = renderedHtml(body);
     if (rendered === null) return false;
-    return /class="[^"]*wikitable/.test(rendered) && /Time Period/i.test(rendered);
+    return (
+      (/class="[^"]*wikitable/.test(rendered) && /Time Period/i.test(rendered)) ||
+      isNikkeEventPage(rendered)
+    );
   },
   parse: parseFandomEventsPage,
 };

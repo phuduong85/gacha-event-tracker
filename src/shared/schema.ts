@@ -10,6 +10,12 @@ export const GameId = z.enum([
   "p5x", // Persona 5: The Phantom X
   "r1999", // Reverse: 1999
   "ptn", // Path to Nowhere
+  "holodori", // hololive Dreams
+  "gfl2", // Girls' Frontline 2: Exilium
+  "stellasora", // Stella Sora
+  "czn", // Chaos Zero Nightmare
+  "uma", // Umamusume: Pretty Derby
+  "nikke", // Goddess of Victory: Nikke
 ]);
 export type GameId = z.infer<typeof GameId>;
 

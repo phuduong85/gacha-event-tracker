@@ -267,6 +267,12 @@ export interface RobotsDecision {
   /** Human-readable why, for the run log. */
   readonly reason: string;
   readonly crawlDelayMs: number | null;
+  /**
+   * True when this host was opened by `assumeAllowedWhenForbidden` rather than
+   * by a robots.txt we actually read. The caller is expected to say so out
+   * loud — an override nobody sees is an override nobody withdraws.
+   */
+  readonly assumedOnForbidden?: boolean;
 }
 
 export interface RobotsCacheOptions {
@@ -276,6 +282,20 @@ export interface RobotsCacheOptions {
   ttlMs?: number;
   now?: () => number;
   timeoutMs?: number;
+  /**
+   * Treat a `403` on **robots.txt itself** as permission, instead of failing
+   * closed. Off by default and never set from CI — see `--assume-robots-on-403`
+   * in `scripts/refresh-sources.ts` for the whole argument.
+   *
+   * The narrowness is the point. This covers exactly one situation: a host that
+   * will not serve us `/robots.txt` from this address, whose rules a human has
+   * therefore read in a browser and written down (AGENTS.md § Scraping conduct
+   * records Fandom's, verbatim). It does **not** touch a robots.txt we did read
+   * and that disallows us — `isAllowed` still decides that, and still says no.
+   * A file we can read and that refuses us is an answer; this is the case where
+   * there is no answer and one has been obtained by hand.
+   */
+  assumeAllowedWhenForbidden?: boolean;
 }
 
 interface CacheEntry {
@@ -284,6 +304,8 @@ interface CacheEntry {
   usable: boolean;
   reason: string;
   at: number;
+  /** True when `assumeAllowedWhenForbidden` is what made this entry usable. */
+  assumedOnForbidden?: boolean;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -304,6 +326,7 @@ export class RobotsCache {
   private readonly ttlMs: number;
   private readonly nowMs: () => number;
   private readonly timeoutMs: number;
+  private readonly assumeAllowedWhenForbidden: boolean;
 
   constructor(options: RobotsCacheOptions) {
     this.userAgent = options.userAgent;
@@ -311,6 +334,8 @@ export class RobotsCache {
     this.ttlMs = options.ttlMs ?? DAY_MS;
     this.nowMs = options.now ?? (() => Date.now());
     this.timeoutMs = options.timeoutMs ?? 20_000;
+    this.assumeAllowedWhenForbidden =
+      options.assumeAllowedWhenForbidden ?? false;
   }
 
   /** Number of robots.txt requests made, for tests and the run log. */
@@ -329,6 +354,9 @@ export class RobotsCache {
       allowed,
       reason: allowed ? entry.reason : `disallowed by ${origin}/robots.txt`,
       crawlDelayMs: crawlDelayMs(entry.robots, this.userAgent),
+      ...(entry.assumedOnForbidden === true
+        ? { assumedOnForbidden: true }
+        : {}),
     };
   }
 
@@ -370,6 +398,23 @@ export class RobotsCache {
         usable: true,
         reason: "no robots.txt",
         at,
+      };
+    }
+
+    // A host that will not serve us the file at all, only when an operator has
+    // asked for this. `usable: true` with no rules is not a guess about what
+    // the site permits — it is standing in for rules a human read in a browser
+    // and wrote into AGENTS.md. Everything else about being a guest still
+    // applies: one request per source, six hours apart, spaced per host.
+    if (response.status === 403 && this.assumeAllowedWhenForbidden) {
+      return {
+        robots: ALLOW_ALL,
+        usable: true,
+        reason:
+          `robots.txt returned 403; proceeding on a permission recorded by ` +
+          `hand (--assume-robots-on-403)`,
+        at,
+        assumedOnForbidden: true,
       };
     }
 

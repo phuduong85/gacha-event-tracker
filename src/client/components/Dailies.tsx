@@ -194,8 +194,13 @@ function TickChip({
       aria-pressed={isDone}
       aria-label={`${ariaLabel}${isDone ? ", done today" : ", not done today"}`}
       title={title}
-      className="flex max-w-[15rem] items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
+      // `.hue-chip` is the shared hover: the chip's own colours are the game's
+      // hue and arrive inline, which no rule can override, so it is drawn from
+      // what inline does not own. `--hue` below is the only thing it needs;
+      // pressed-ness it reads off `aria-pressed`, which is already up there.
+      className="hue-chip flex max-w-[15rem] items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium"
       style={{
+        ["--hue" as string]: hue,
         borderColor: isDone ? hue : `color-mix(in srgb, ${hue} 20%, transparent)`,
         // Colour identifies the game; done-ness is carried by the tick, the
         // full-strength border and the wash. Keeping the label readable matters
@@ -217,7 +222,7 @@ function TickChip({
           opacity={isDone ? 1 : 0.25}
         />
       </svg>
-      <span className="truncate">{label}</span>
+      <span className="hue-chip-label truncate">{label}</span>
       {streak > 1 && (
         <span className="tnum shrink-0 text-[0.625rem] opacity-70">{streak}d</span>
       )}

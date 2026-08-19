@@ -1,7 +1,6 @@
-import { GAMES } from "./games.ts";
 import type { LaneId } from "./custom.ts";
 import type { GachaEvent, GameId, Region } from "./schema.ts";
-import { DAY, HOUR, REGION_RESET_UTC_OFFSET } from "./time.ts";
+import { DAY, resetShiftMs } from "./time.ts";
 
 /**
  * Events you have to come back to every day.
@@ -16,13 +15,6 @@ import { DAY, HOUR, REGION_RESET_UTC_OFFSET } from "./time.ts";
  * reason the parsers do: a function that reads `Date.now()` cannot be tested
  * against a fixed instant.
  */
-
-/**
- * Gacha servers roll the day at 04:00 local server time, not midnight — a
- * player finishing at 02:00 is still on the previous day's dailies. Getting
- * this wrong ticks the wrong box for four hours every night.
- */
-export const RESET_HOUR_LOCAL = 4;
 
 /**
  * A 180-day event is already a parse error (see AGENTS.md § Domain rules), so
@@ -116,59 +108,6 @@ export function dailyOverride(
 }
 
 /**
- * The UTC offset of the server clock a reader's day rolls on.
- *
- * The reader's region is always the question; a game can just answer it
- * differently. Most run a server per region and take the default. One that
- * serves two regions off a single machine lists the regions that differ in
- * `resetOffsets` — Reverse: 1999 runs one global server on `asia` and
- * `america`'s clock, not each region's own.
- *
- * A blanket per-game offset would be the wrong shape: it would drag the regions
- * that *do* have their own server onto somebody else's clock, which is a
- * different bug in the same place.
- */
-export function serverOffsetUtc(region: Region, game?: LaneId): number {
-  // A lane the reader invented (PRD F13) has no server map to know about, and
-  // neither does an id that has outlived its game, so both take the regional
-  // default rather than being looked up and crashing.
-  const override =
-    game === undefined ? undefined : GAMES[game as GameId]?.resetOffsets?.[region];
-  return override ?? REGION_RESET_UTC_OFFSET[region];
-}
-
-/**
- * The hour of its own server day a game rolls over on.
- *
- * Almost always `RESET_HOUR_LOCAL`. A game that resets on a different hour says
- * so in `resetHourLocal` (`games.ts`) — Reverse: 1999 rolls at 05:00 — and that
- * cannot be folded into `serverOffsetUtc`: shifting a game's stated offset to
- * land the right reset instant would misreport the server clock to everything
- * else that asks for it.
- *
- * A lane the reader invented has no server to know about and takes the default,
- * for the same reason `serverOffsetUtc` does.
- */
-export function resetHourFor(game?: LaneId): number {
-  const override =
-    game === undefined ? undefined : GAMES[game as GameId]?.resetHourLocal;
-  return override ?? RESET_HOUR_LOCAL;
-}
-
-/**
- * Offset from UTC midnight to this game's reset instant.
- *
- * Everything downstream of this is a **localStorage key**. Moving the reset
- * hour, a region offset, or a game's own override re-labels the game-day some
- * already-logged ticks fall in — at most by one day, and never by deleting one,
- * but it is still the reader's streak moving under them. Treat a change here as
- * a data change, not a constant.
- */
-function shift(region: Region, game?: LaneId): number {
-  return serverOffsetUtc(region, game) * HOUR - resetHourFor(game) * HOUR;
-}
-
-/**
  * Which game-day an instant falls in, as `YYYY-MM-DD`.
  *
  * These are storage keys, and they are compared with `<` elsewhere in this
@@ -179,12 +118,12 @@ function shift(region: Region, game?: LaneId): number {
  * that reads or writes a tick should pass it.
  */
 export function dayKey(ms: number, region: Region, game?: LaneId): string {
-  return new Date(ms + shift(region, game)).toISOString().slice(0, 10);
+  return new Date(ms + resetShiftMs(region, game)).toISOString().slice(0, 10);
 }
 
 /** The next reset instant strictly after `ms`. */
 export function nextResetMs(ms: number, region: Region, game?: LaneId): number {
-  const s = shift(region, game);
+  const s = resetShiftMs(region, game);
   return Math.floor((ms + s) / DAY) * DAY + DAY - s;
 }
 

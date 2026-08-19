@@ -8,8 +8,11 @@ import {
   parseMonthDayYear,
   parseOpenRange,
   parseOrdinalDateTimeRange,
+  parseSlashClockZone,
   parseSlashDateTimeRange,
   parseYearFirstSlashRange,
+  parseIsoClockRangeUtc,
+  parseIsoOffsetInstant,
 } from "../src/ingest/dates.ts";
 
 describe("parseMonthDayYear", () => {
@@ -365,5 +368,145 @@ describe("parseIsoDay", () => {
     expect(parseIsoDay("2026")).toBeNull();
     expect(parseIsoDay("TBA")).toBeNull();
     expect(parseIsoDay("")).toBeNull();
+  });
+});
+
+describe("parseSlashClockZone", () => {
+  test("converts a stated JST wall clock to UTC", () => {
+    expect(parseSlashClockZone("08/17/2026 8:00PM (JST)")).toEqual({
+      iso: "2026-08-17T11:00:00.000Z",
+      precision: "exact",
+    });
+  });
+
+  test("a small-hours JST boundary lands on the previous UTC day", () => {
+    // The shift that makes storing the source's own wall clock unusable.
+    expect(parseSlashClockZone("08/30/2026 3:59AM (JST)")?.iso).toBe(
+      "2026-08-29T18:59:00.000Z",
+    );
+  });
+
+  test("12PM is noon and 12AM is midnight", () => {
+    expect(parseSlashClockZone("08/20/2026 12:00PM (JST)")?.iso).toBe(
+      "2026-08-20T03:00:00.000Z",
+    );
+    expect(parseSlashClockZone("08/21/2026 12:00AM (JST)")?.iso).toBe(
+      "2026-08-20T15:00:00.000Z",
+    );
+  });
+
+  test("an unstated or unknown zone is null, never UTC", () => {
+    expect(parseSlashClockZone("08/20/2026 12:00PM")).toBeNull();
+    // Not in the table, and deliberately: `CST` names three different zones.
+    expect(parseSlashClockZone("08/20/2026 12:00PM (CST)")).toBeNull();
+  });
+
+  test("rejects a non-date and an impossible calendar day", () => {
+    expect(parseSlashClockZone("Game Launch")).toBeNull();
+    expect(parseSlashClockZone("Unknown")).toBeNull();
+    // Validated on the stated local fields, before the offset shifts anything:
+    // converting first would quietly turn Feb 30 into a real instant in March.
+    expect(parseSlashClockZone("02/30/2026 12:00PM (JST)")).toBeNull();
+    expect(parseSlashClockZone("08/20/2026 13:00PM (JST)")).toBeNull();
+  });
+
+  test("is a whole-cell reader, not a scanner", () => {
+    // Anchored at both ends: letting this match mid-prose is how a reader
+    // starts finding dates inside sentences.
+    expect(
+      parseSlashClockZone("Starts 08/20/2026 12:00PM (JST) after maintenance"),
+    ).toBeNull();
+  });
+});
+
+describe("parseIsoClockRangeUtc", () => {
+  test("reads both boundaries exact, converting nothing", () => {
+    // IOP Wiki states the zone itself, so this is the one range reader here
+    // that assumes no offset anywhere.
+    const range = parseIsoClockRangeUtc(
+      "2026-08-06 13:00 - 2026-08-26 22:59 (UTC)",
+    );
+    expect(range?.start.iso).toBe("2026-08-06T13:00:00.000Z");
+    expect(range?.end.iso).toBe("2026-08-26T22:59:00.000Z");
+    expect(range?.start.precision).toBe("exact");
+    expect(range?.end.precision).toBe("exact");
+  });
+
+  test("accepts the en dash and the non-breaking spaces the page emits", () => {
+    // The wiki writes `&#160;-&#160;`, which `text()` decodes to spaces.
+    expect(
+      parseIsoClockRangeUtc("2025-01-16 17:00 – 2025-02-06 02:59 (UTC)")?.end
+        .iso,
+    ).toBe("2025-02-06T02:59:00.000Z");
+  });
+
+  test("requires the stated zone rather than defaulting to UTC", () => {
+    // The failure this prevents is silent and hours wide: a wall clock with no
+    // zone is a missing fact, exactly as it is in `parseSlashClockZone`.
+    expect(parseIsoClockRangeUtc("2026-08-06 13:00 - 2026-08-26 22:59")).toBeNull();
+    expect(
+      parseIsoClockRangeUtc("2026-08-06 13:00 - 2026-08-26 22:59 (UTC+8)"),
+    ).toBeNull();
+  });
+
+  test("rejects an impossible calendar day", () => {
+    expect(
+      parseIsoClockRangeUtc("2026-02-30 13:00 - 2026-03-26 22:59 (UTC)"),
+    ).toBeNull();
+    expect(
+      parseIsoClockRangeUtc("2026-08-06 25:00 - 2026-08-26 22:59 (UTC)"),
+    ).toBeNull();
+  });
+
+  test("is anchored at the start, so it cannot find a range inside prose", () => {
+    expect(
+      parseIsoClockRangeUtc("Runs 2026-08-06 13:00 - 2026-08-26 22:59 (UTC)"),
+    ).toBeNull();
+  });
+
+  test("tolerates the ICS widget's leftovers after the zone", () => {
+    // The period cell also carries an export widget; the parser strips its
+    // markup but the container survives as trailing whitespace.
+    expect(
+      parseIsoClockRangeUtc("2026-08-06 13:00 - 2026-08-26 22:59 (UTC)   ")
+        ?.start.iso,
+    ).toBe("2026-08-06T13:00:00.000Z");
+  });
+});
+
+describe("parseIsoOffsetInstant", () => {
+  test("converts a stated offset to UTC", () => {
+    // Stella Sora's front page emits its banner window as real `<time datetime>`
+    // attributes, so the offset is in the markup rather than printed for a
+    // human to interpret.
+    expect(parseIsoOffsetInstant("2026-08-03T21:00-07:00")?.iso).toBe(
+      "2026-08-04T04:00:00.000Z",
+    );
+    expect(parseIsoOffsetInstant("2026-08-03T21:00-07:00")?.precision).toBe(
+      "exact",
+    );
+  });
+
+  test("accepts Z and seconds", () => {
+    expect(parseIsoOffsetInstant("2026-08-03T21:00:00Z")?.iso).toBe(
+      "2026-08-03T21:00:00.000Z",
+    );
+  });
+
+  test("requires the offset rather than defaulting to UTC", () => {
+    // The sibling `Banner_List` prints the same instants with no zone anywhere
+    // on the page. Reading those as UTC is the assumption this reader exists to
+    // refuse.
+    expect(parseIsoOffsetInstant("2026-08-03T21:00")).toBeNull();
+    expect(parseIsoOffsetInstant("2026-08-03 21:00-07:00")).toBeNull();
+  });
+
+  test("rejects an impossible calendar day, before the offset shifts it", () => {
+    // Converting first would quietly turn February 30 into a real March instant.
+    expect(parseIsoOffsetInstant("2026-02-30T21:00-07:00")).toBeNull();
+  });
+
+  test("is anchored, so it cannot read an instant out of prose", () => {
+    expect(parseIsoOffsetInstant("Starts 2026-08-03T21:00-07:00")).toBeNull();
   });
 });

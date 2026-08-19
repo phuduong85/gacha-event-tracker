@@ -3,6 +3,7 @@ import {
   advanceFocus,
   countByGame,
   firstToExpire,
+  nextToExpire,
   outstanding,
   resolveFocus,
 } from "../src/client/state/lens.ts";
@@ -70,6 +71,60 @@ describe("firstToExpire", () => {
 
   test("no rows is null rather than a crash", () => {
     expect(firstToExpire([])).toBeNull();
+  });
+});
+
+describe("nextToExpire", () => {
+  test("orders by deadline, whatever order it was handed", () => {
+    // Same argument as firstToExpire, three rows deep: the reader asked for the
+    // three closest deadlines, not the first three rows of a list they had
+    // sorted by what they are partway through.
+    const rows = [
+      row("mid-run", "genshin", 9 * 86_400_000),
+      row("tomorrow", "hsr", 30 * 3_600_000),
+      row("tonight", "zzz", 3 * 3_600_000),
+    ];
+    expect(nextToExpire(rows, 3).map((r) => r.event.id)).toEqual([
+      "tonight",
+      "tomorrow",
+      "mid-run",
+    ]);
+  });
+
+  test("takes only as many as asked for", () => {
+    const rows = [
+      row("a", "genshin", 1000),
+      row("b", "hsr", 2000),
+      row("c", "zzz", 3000),
+    ];
+    expect(nextToExpire(rows, 2).map((r) => r.event.id)).toEqual(["a", "b"]);
+  });
+
+  test("asking for more than there is returns what there is", () => {
+    expect(nextToExpire([row("a", "genshin", 1000)], 3)).toHaveLength(1);
+    expect(nextToExpire([], 3)).toEqual([]);
+  });
+
+  test("unannounced ends sort behind every real deadline", () => {
+    // A panel of deadlines that leads with "unknown" is not a panel of
+    // deadlines. They still appear once the dated ones run out, because the
+    // event is real — it just is not a countdown.
+    const rows = [
+      row("unknown", "zzz", null),
+      row("late", "wuwa", 90 * 86_400_000),
+    ];
+    expect(nextToExpire(rows, 2).map((r) => r.event.id)).toEqual([
+      "late",
+      "unknown",
+    ]);
+  });
+
+  test("leaves the list it was given alone", () => {
+    // It is handed the same array the list on screen is rendering from, and
+    // sorting that in place would reorder the reader's list from under them.
+    const rows = [row("b", "hsr", 2000), row("a", "genshin", 1000)];
+    nextToExpire(rows, 2);
+    expect(rows.map((r) => r.event.id)).toEqual(["b", "a"]);
   });
 });
 
