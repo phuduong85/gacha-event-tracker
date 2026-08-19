@@ -196,21 +196,19 @@ describe("near matches within one source", () => {
   test("two rows from one page stay two events", () => {
     // The page has already told us these are two things, and the parser has
     // already dropped repeats of the same id — so fusing them here overrules a
-    // distinction the publisher made on purpose. Game8's Umamusume banner list
-    // is the real case: two concurrent banners whose titles differ by one
-    // parenthetical and which start on the same day. Fusing them dropped a live
-    // banner off the calendar with nothing reporting it.
+    // distinction the publisher made on purpose. A Game8 banner list is the
+    // real case that surfaced this: two concurrent banners whose titles differ
+    // by one parenthetical and which start on the same day. Fusing them
+    // dropped a live banner off the calendar with nothing reporting it.
     const character = event({
-      id: "uma:3-star-guaranteed-1-5-anniversary-scout-character:2026-07-22",
-      game: "uma",
+      id: "genshin:3-star-guaranteed-1-5-anniversary-scout-character:2026-07-22",
       title: "3 Star Guaranteed 1.5 Anniversary Scout (Character)",
-      sourceId: "uma-game8-events",
+      sourceId: "genshin-game8-events",
     });
     const support = event({
-      id: "uma:3-star-guaranteed-1-5-anniversary-scout-support:2026-07-22",
-      game: "uma",
+      id: "genshin:3-star-guaranteed-1-5-anniversary-scout-support:2026-07-22",
       title: "3 Star Guaranteed 1.5 Anniversary Scout (Support)",
-      sourceId: "uma-game8-events",
+      sourceId: "genshin-game8-events",
     });
 
     const merged = mergeEvents([[character, support]]);

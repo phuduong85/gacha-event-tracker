@@ -7,9 +7,9 @@ import type { SourceParser } from "./types.ts";
 /**
  * The Stella Sora wiki's `Current Banners` module (`stellasora.miraheze.org`).
  *
- * Miraheze again, so the same call as `bawiki.ts` and `holodori.ts`: `/wiki/` is
- * the surface `*` is allowed, `/w/` and `?action=` are disallowed, and this page
- * answers our own User-Agent with a 200 under CC BY-SA 4.0.
+ * Miraheze again, so the same call every Miraheze source here makes: `/wiki/`
+ * is the surface `*` is allowed, `/w/` and `?action=` are disallowed, and this
+ * page answers our own User-Agent with a 200 under CC BY-SA 4.0.
  *
  * **The front page, and not the article — which is the opposite of the usual
  * call, so the reasoning matters.** This wiki publishes the same schedule twice:
@@ -47,9 +47,8 @@ import type { SourceParser } from "./types.ts";
  * **Banner names are red links.** `A Breezy Romance` links to
  * `/wiki/A_Breezy_Romance/2026-08-03?action=edit&redlink=1` — a create-page
  * form, and a `?action=` URL this wiki's robots.txt disallows. So a href
- * carrying a query is refused and the module's own page stands in, exactly as
- * `holodori.ts` does it; the banners whose articles do exist link normally and
- * get linked.
+ * carrying a query is refused and the module's own page stands in; the
+ * banners whose articles do exist link normally and get linked.
  *
  * Banners only. This wiki dates no story events — `/wiki/Events` is a list of
  * names with no dates at all — so the lane is a banner calendar, and that is
@@ -120,7 +119,7 @@ export function parseStellaSoraMainPage(
 
     // The module is titled "Current", and it is maintained by hand like every
     // other wiki section — so currency is checked against `ctx.now` rather than
-    // taken on trust, as it is in `holodori.ts`.
+    // taken on trust, as it is everywhere else here.
     if (Date.parse(end.iso) < nowMs) continue;
 
     const id = eventId(ctx.game, title, start.iso);

@@ -85,15 +85,6 @@ const SOURCES: SourceSpec[] = [
     parserId: "fandom",
   },
   {
-    id: "holodori-holodoriwiki-events",
-    game: "holodori",
-    // The rendered page, the same call as `ba-bawiki-events` above and for the
-    // same reason: holodori.wiki is Miraheze, so `/w/` and `?action=` are the
-    // closed routes here and `/wiki/` is the one `*` is allowed.
-    url: "https://holodori.wiki/wiki/Events",
-    parserId: "holodoriwiki",
-  },
-  {
     id: "gfl2-iopwiki-events",
     game: "gfl2",
     // IOP Wiki, the Girls' Frontline universe wiki. Its robots.txt is two lines
@@ -123,7 +114,7 @@ const SOURCES: SourceSpec[] = [
     // `Help:` and `UserProfile:` refused. The named AI crawlers it blocks
     // (GPTBot, CCBot, OAI-SearchBot, ImagesiftBot) are not us.
     //
-    // As with r1999 and fgo, the robots gate still fails closed from a
+    // As with r1999, the robots gate still fails closed from a
     // datacentre address, so the scheduled refresh reports skipped_robots and
     // this lane is fixture-backed until refreshed from an address Fandom serves.
     url: "https://nikke-goddess-of-victory-international.fandom.com/api.php?action=parse&page=Event&prop=text&formatversion=2&format=json",
@@ -138,21 +129,6 @@ const SOURCES: SourceSpec[] = [
     // fixture in CI from day one and only a manual `bun run refresh` moves it.
     // `freshness()` discloses that in the footer, which is what it is for.
     url: "https://game8.co/games/Chaos-Zero-Nightmare/archives/559899",
-    parserId: "game8",
-  },
-  {
-    id: "uma-game8-events",
-    game: "uma",
-    // `uma.moe` stays declined — its API sits behind a Cloudflare Turnstile
-    // proof header, and an adapter would mean defeating a deliberate access
-    // control. This is the surface that is simply open.
-    //
-    // The stable URL matters here: Game8 also publishes monthly
-    // `August 2026 Release Schedule` pages whose id changes every month, which
-    // a static registry cannot follow. "List of All Banners" does not move.
-    //
-    // The tenth game8 source, with the same CI blindness as the other nine.
-    url: "https://game8.co/games/Umamusume-Pretty-Derby/archives/536311",
     parserId: "game8",
   },
 ];

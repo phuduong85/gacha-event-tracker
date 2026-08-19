@@ -50,11 +50,9 @@ export const VALID_GAME_IDS = [
   "p5x",
   "r1999",
   "ptn",
-  "holodori",
   "gfl2",
   "stellasora",
   "czn",
-  "uma",
   "nikke",
 ] as const;
 

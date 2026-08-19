@@ -24,10 +24,10 @@ describe("adoptNewLanes", () => {
   });
 
   test("a lane they were never offered arrives switched off", () => {
-    const patch = adoptNewLanes([...TRACKED, "holodori"], TRACKED, []);
+    const patch = adoptNewLanes([...TRACKED, "wuwa"], TRACKED, []);
     expect(patch).toEqual({
-      knownGames: [...TRACKED, "holodori"],
-      hiddenGames: ["holodori"],
+      knownGames: [...TRACKED, "wuwa"],
+      hiddenGames: ["wuwa"],
     });
   });
 

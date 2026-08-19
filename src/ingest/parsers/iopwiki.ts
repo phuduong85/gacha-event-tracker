@@ -33,12 +33,12 @@ import type { SourceParser } from "./types.ts";
  * **`Betas` is a section, not an event type.** The page's `<h2>`s are
  * `Main Events`, `Minor Events`, `Betas` and `References`; closed beta rows are
  * dated exactly like everything else and would parse cleanly onto a calendar of
- * things nobody can do. Inclusion is fenced on the heading, as it is in
- * `holodori.ts`.
+ * things nobody can do. Inclusion is fenced on the heading rather than by
+ * position.
  *
  * **This is an archive, not a schedule.** 145 rows go back to 2023, 51 of them
  * ours, of which one had not ended when the fixture was captured. So inclusion
- * is decided against `ctx.now` exactly as it is in `bawiki.ts` — there is no
+ * is decided against `ctx.now`, as every other source here does — there is no
  * "ongoing" heading to gate on, and nothing downstream drops a finished event.
  * That makes the lane thin by design: the wiki publishes a patch when it is
  * announced, so a quiet week is one live event, which is the truth rather than

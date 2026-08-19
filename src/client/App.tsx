@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { fetchFeed, type FeedState } from "./api.ts";
 import { Archive } from "./components/Archive.tsx";
 import { Backup } from "./components/Backup.tsx";
-import { Controls } from "./components/Controls.tsx";
 import { Dailies } from "./components/Dailies.tsx";
 import { GameFocus } from "./components/GameFocus.tsx";
+import { Games } from "./components/Games.tsx";
 import { EventDetail } from "./components/EventDetail.tsx";
 import { EventRow, type DailyBadge, type RowEvent } from "./components/EventRow.tsx";
 import { IconUpload } from "./components/IconUpload.tsx";
@@ -17,6 +17,7 @@ import { Legend } from "./components/Legend.tsx";
 import { ThemePicker } from "./components/ThemePicker.tsx";
 import { Toast } from "./components/Toast.tsx";
 import { UpdateNotice } from "./components/UpdateNotice.tsx";
+import { YourOwn } from "./components/YourOwn.tsx";
 import { KEYS } from "./state/storage.ts";
 import { useAppUpdate } from "./state/useAppUpdate.ts";
 import { useMarkSet } from "./state/useMarkSet.ts";
@@ -108,6 +109,8 @@ export function App() {
   const [iconsOpen, setIconsOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
+  const [gamesOpen, setGamesOpen] = useState(false);
+  const [customOpen, setCustomOpen] = useState(false);
   // The event most recently ignored, so it can be put back without hunting for
   // a row that just disappeared.
   const [lastIgnored, setLastIgnored] = useState<{ id: string; title: string } | null>(null);
@@ -614,23 +617,6 @@ export function App() {
         </>
       )}
 
-      <Controls
-        games={games}
-        prefs={prefs}
-        onToggleGame={toggleGame}
-        own={{
-          games: custom.games,
-          events: custom.events,
-          // Every lane, not just theirs: a source can miss an event in a game
-          // we do track, and that is the same job with the same form.
-          lanes: games,
-          onAddGame: custom.addGame,
-          onEditGame: custom.editGame,
-          onRemoveGame: custom.removeGame,
-          onAddEvent: custom.addEvent,
-        }}
-      />
-
       {!online && (
         <p className="border-t border-hairline px-4 py-3 text-xs leading-relaxed text-soon">
           You're offline. These are the events last downloaded
@@ -645,10 +631,10 @@ export function App() {
           the disclaimer, the "not affiliated" text, the report links —
           is one click away rather than something scrolled past on every
           visit. The freshness line it used to lead with lives by the
-          game list now instead (Freshness.tsx). Icons, Backup, Theme and
-          Options sit beside it for the same reason: settings a reader
-          reaches for rarely, in a sheet rather than taking up room in the
-          panel every visit. */}
+          game list now instead (Freshness.tsx). Games, Icons, Custom,
+          Backup, Theme and Options sit beside it for the same reason:
+          settings a reader reaches for rarely, in a sheet rather than
+          taking up room in a settings panel that no longer exists. */}
       <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-t border-hairline px-4 py-4 text-center">
         {iconGames.length > 0 && (
           <button
@@ -659,7 +645,14 @@ export function App() {
             Icons
           </button>
         )}
-        {/* Only "america" is offered (see Controls' old note on Asia), so
+        <button
+          type="button"
+          onClick={() => setGamesOpen(true)}
+          className="text-xs text-faint underline decoration-hairline underline-offset-2 transition-colors duration-150 hover:text-ink hover:decoration-near"
+        >
+          Games
+        </button>
+        {/* Only "america" is offered (see Games.tsx's old note on Asia), so
             this is a pill rather than a group of alternatives — pressed
             already, and here mainly to confirm the region for a reader
             `guessRegion` placed in "asia" rather than to offer a real
@@ -675,6 +668,13 @@ export function App() {
           }`}
         >
           🇺🇸 America
+        </button>
+        <button
+          type="button"
+          onClick={() => setCustomOpen(true)}
+          className="text-xs text-faint underline decoration-hairline underline-offset-2 transition-colors duration-150 hover:text-ink hover:decoration-near"
+        >
+          Custom
         </button>
         <button
           type="button"
@@ -712,6 +712,31 @@ export function App() {
             games={iconGames}
             iconUrl={gameIcons.iconUrl}
             onUploaded={gameIcons.refresh}
+          />
+        </Modal>
+      )}
+
+      {gamesOpen && (
+        <Games
+          games={games}
+          hiddenGames={prefs.hiddenGames}
+          onToggleGame={toggleGame}
+          onClose={() => setGamesOpen(false)}
+        />
+      )}
+
+      {customOpen && (
+        <Modal label="Custom" onClose={() => setCustomOpen(false)}>
+          <YourOwn
+            games={custom.games}
+            events={custom.events}
+            // Every lane, not just theirs: a source can miss an event in a
+            // game we do track, and that is the same job with the same form.
+            lanes={games}
+            onAddGame={custom.addGame}
+            onEditGame={custom.editGame}
+            onRemoveGame={custom.removeGame}
+            onAddEvent={custom.addEvent}
           />
         </Modal>
       )}

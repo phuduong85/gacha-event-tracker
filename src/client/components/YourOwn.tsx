@@ -38,9 +38,9 @@ export function YourOwn({
   const list = Object.values(games);
 
   return (
-    <div className="mt-6 border-t border-hairline pt-4">
-      <p className="eyebrow">Your own games and events</p>
-      <p className="mt-1.5 max-w-md text-xs leading-relaxed text-faint">
+    <>
+      <p className="eyebrow text-ink">Your own games and events</p>
+      <p className="mt-4">
         Track something this app doesn't cover, or an event a source missed. Your
         dates are yours — they're never presented as coming from a wiki, and they
         travel in your export.
@@ -157,6 +157,6 @@ export function YourOwn({
           </button>
         </div>
       )}
-    </div>
+    </>
   );
 }

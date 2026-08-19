@@ -91,16 +91,6 @@ export const GAMES: Record<GameId, GameMeta> = {
   // recent edit by over a year, so it is not current either. Add both only
   // once a real source states the UTC offset.
   ptn: { id: "ptn", name: "Path to Nowhere", short: "PTN", hue: "#8FCC3D", studio: "Aisno Games", dailyTasks: "Daily Dispatch" },
-  // hololive Dreams runs a single worldwide service on a Japanese clock, and
-  // both halves of that come from the source rather than from habit: every
-  // boundary on holodori.wiki is stated once, in `(JST)`, with no per-region
-  // column anywhere, and the game launched worldwide simultaneously. The reset
-  // hour is evidenced the way Arknights' is — `Training Support Missions` ends
-  // at 3:59AM JST, one minute before a 04:00 local reset — so the default hour
-  // stands and only the offset is overridden. Setting it now costs nothing: no
-  // reader has a day key for a game the app has never shipped, whereas adding
-  // the same override later would re-label ticks they had already logged.
-  holodori: { id: "holodori", name: "hololive Dreams", short: "holodori", hue: "#5FD3F3", studio: "QualiArts / COVER", dailyTasks: "Daily missions, stamina", resetOffsets: { asia: 9, america: 9 } },
   // No `resetOffsets`, and unusually the source is not silent here — it is
   // ambiguous, which comes to the same answer. Every IOP Wiki row states an
   // exact UTC instant, but the EN boundaries land on three different clocks:
@@ -117,15 +107,11 @@ export const GAMES: Record<GameId, GameMeta> = {
   // in either direction, and `resetOffsets` holds one fixed number. The page
   // also never lands its boundaries on a single local hour (20:00 and 21:00
   // starts, 12:59 and 19:59 ends), so there is no reset hour to read off it
-  // either. See the fgo entry below for the same reasoning at more length.
+  // either.
   stellasora: { id: "stellasora", name: "Stella Sora", short: "Stella Sora", hue: "#2E9E9E", studio: "Yostar", dailyTasks: "Daily missions" },
   // No `resetOffsets`: the source is Game8, which states day-precision prose
   // and no clock at all — the same silence p5x has, and the same answer.
   czn: { id: "czn", name: "Chaos Zero Nightmare", short: "CZN", hue: "#B84A9C", studio: "Smilegate", dailyTasks: "Daily missions" },
-  // No `resetOffsets`. The source's own column is headed `Availability (UTC)`,
-  // which states the zone the *dates* are in and says nothing about where the
-  // server's day rolls — and every row on it is a bare date anyway, with no
-  // time of day to read a reset out of. Same silence as p5x and czn.
   // Nikke runs one worldwide server on a Japanese clock that rolls its day at
   // **05:00**, not 04:00 — and both halves come from the source rather than
   // from habit. Every schedule column on the wiki is headed `Start(UTC+9)` /
@@ -137,7 +123,6 @@ export const GAMES: Record<GameId, GameMeta> = {
   // could not be added later without re-labelling day keys readers had already
   // logged ticks under.
   nikke: { id: "nikke", name: "Goddess of Victory: Nikke", short: "Nikke", hue: "#E4572E", studio: "Shift Up", dailyTasks: "Daily missions, outpost", resetOffsets: { asia: 9, america: 9 }, resetHourLocal: 5 },
-  uma: { id: "uma", name: "Umamusume: Pretty Derby", short: "Umamusume", hue: "#6FBF44", studio: "Cygames", dailyTasks: "Daily races, missions" },
 };
 
 export const GAME_LIST: GameMeta[] = Object.values(GAMES);
