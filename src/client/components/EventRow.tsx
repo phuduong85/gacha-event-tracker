@@ -80,7 +80,7 @@ export function EventRow({
           src={icon}
           alt=""
           aria-hidden
-          className="pointer-events-none absolute inset-y-0 right-0 z-0 w-28 object-cover opacity-[0.14]"
+          className="pointer-events-none absolute inset-y-0 right-0 z-0 w-28 object-cover opacity-[0.032]"
           style={{
             maskImage: "linear-gradient(to right, transparent, black 55%)",
             WebkitMaskImage: "linear-gradient(to right, transparent, black 55%)",
