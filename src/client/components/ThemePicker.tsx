@@ -25,9 +25,15 @@ const METER_MODES: Array<{ id: Prefs["meterMode"]; label: string }> = [
   { id: "days", label: "Per day" },
 ];
 
-/** Sunset first: it's the default, and every reader has already seen it. */
+/**
+ * Sunset first: it's the default, and every reader has already seen it.
+ * Dark Sunset sits right beside it rather than off with Ocean and Mono — it
+ * is that same ramp, not a different one, just worn on every ground instead
+ * of dimmed for the ones that need it.
+ */
 const HEAT_RAMP_OPTIONS: Array<{ id: HeatRampId; label: string }> = [
   { id: "sunset", label: "Sunset" },
+  { id: "sunsetDark", label: "Dark Sunset" },
   { id: "ocean", label: "Ocean" },
   { id: "mono", label: "Mono" },
 ];

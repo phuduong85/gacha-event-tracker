@@ -185,15 +185,25 @@ describe("the ground colour, in all three places it is written down", () => {
 describe("HEAT_RAMPS", () => {
   const ids = Object.keys(HEAT_RAMPS) as Array<keyof typeof HEAT_RAMPS>;
 
-  test("every ramp's paper variant clears the same 4.5:1 bar the shipped one does", () => {
+  // sunsetDark is the one ramp that deliberately does not clear 4.5:1 on
+  // paper — that's the whole point of it (see its own doc comment) — so it
+  // is named here rather than silently exempted by a blanket try/catch.
+  const ACCESSIBLE_ON_PAPER = ids.filter((id) => id !== "sunsetDark");
+
+  test("every accessible ramp's paper variant clears the same 4.5:1 bar the shipped one does", () => {
     // The claim each ramp's own doc comment makes — checked here rather than
     // trusted, the same way readableHue's light output is above.
-    for (const id of ids) {
+    for (const id of ACCESSIBLE_ON_PAPER) {
       const { calm, near, soon, critical } = HEAT_RAMPS[id].paper;
       for (const step of [calm, near, soon, critical]) {
         expect(contrast(step, THEME_COLOR.light)).toBeGreaterThanOrEqual(4.5);
       }
     }
+  });
+
+  test("sunsetDark is sunset's own dark-ground palette, on every ground", () => {
+    expect(HEAT_RAMPS.sunsetDark.dark).toEqual(HEAT_RAMPS.sunset.dark);
+    expect(HEAT_RAMPS.sunsetDark.paper).toEqual(HEAT_RAMPS.sunset.dark);
   });
 
   test("no ramp repeats a colour across its own four steps", () => {

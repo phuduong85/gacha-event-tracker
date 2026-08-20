@@ -201,7 +201,7 @@ export function applyTheme(theme: Theme, doc: Document = document): void {
  * attribute-selector rule in the stylesheet without this needing a CSS block
  * for every theme × ramp combination.
  */
-export type HeatRampId = "sunset" | "ocean" | "mono";
+export type HeatRampId = "sunset" | "sunsetDark" | "ocean" | "mono";
 
 interface HeatRamp {
   calm: string;
@@ -223,13 +223,26 @@ function groundFor(theme: Theme): Ground {
 }
 
 /**
- * The three choices on offer, `sunset` first because it's the default.
+ * Sunset's own dark-ground values — pulled out because `sunsetDark` (below)
+ * reuses them verbatim rather than risking a second hand-copied set drifting
+ * from the first.
+ */
+const SUNSET_VIVID: HeatRamp = {
+  calm: "#4ade80",
+  near: "#facc15",
+  soon: "#fb923c",
+  critical: "#f87171",
+};
+
+/**
+ * The four choices on offer, `sunset` first because it's the default.
  *
  * Every `paper` value clears the same ≥4.5:1 bar against a pale ground that
  * `styles.css`'s own comment holds itself to for the ramp it ships inline —
- * picking a different ramp must not be a readability downgrade. `dark`
- * values have no such constraint (that ground has room to spare) and are
- * chosen for clarity against near-black instead.
+ * picking a different ramp must not be a readability downgrade — with one
+ * declared exception: see `sunsetDark`. `dark` values have no such
+ * constraint (that ground has room to spare) and are chosen for clarity
+ * against near-black instead.
  */
 export const HEAT_RAMPS: Record<HeatRampId, Record<Ground, HeatRamp>> = {
   /**
@@ -242,8 +255,23 @@ export const HEAT_RAMPS: Record<HeatRampId, Record<Ground, HeatRamp>> = {
    * that still clears 4.5:1.
    */
   sunset: {
-    dark: { calm: "#4ade80", near: "#facc15", soon: "#fb923c", critical: "#f87171" },
+    dark: SUNSET_VIVID,
     paper: { calm: "#157d3c", near: "#9b5f07", soon: "#c2410c", critical: "#b91c1c" },
+  },
+  /**
+   * Sunset's dark-ground palette, worn on every ground rather than only the
+   * one it was tuned for — a reader who wants the neon version on Light or
+   * Glass rather than the dimmed-for-contrast one gets it exactly. This is
+   * the one ramp in this table that does *not* clear 4.5:1 on a pale
+   * ground: that's the whole point of picking it there, a deliberate trade
+   * of legibility for the louder look, made by the reader rather than
+   * assumed for them. Excluded from the "every ramp reads on paper" test
+   * for exactly that reason — `theme.test.ts` names it explicitly rather
+   * than silently skipping it.
+   */
+  sunsetDark: {
+    dark: SUNSET_VIVID,
+    paper: SUNSET_VIVID,
   },
   /**
    * Blue → teal → amber → red — cool while there's time, warm once there
