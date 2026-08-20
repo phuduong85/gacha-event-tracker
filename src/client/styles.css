@@ -99,13 +99,17 @@
   /* The ramp again, re-struck for a light ground. Every step keeps its meaning
      and its ordering; what changes is that each one is now dark enough to read
      as small text on `ground` (≥ 4.5:1), which the dark theme's values are
-     nowhere near. Each is Tailwind's own 700 shade of that hue family — chosen
-     over the 800 shade one step darker because at 800, yellow and orange both
-     collapse toward the same brown (that was tried, and `near` and `soon`
-     stopped being tellable apart), and 700 is the lightest shade of each that
-     still clears the bar. */
-  --color-calm: #15803d;
-  --color-near: #a16207;
+     nowhere near. Each started as Tailwind's own 700 shade of that hue family
+     — chosen over the 800 shade one step darker because at 800, yellow and
+     orange both collapse toward the same brown (that was tried, and `near`
+     and `soon` stopped being tellable apart) — then `calm` and `near` were
+     nudged a hair darker still: plain 700 measured a shade under 4.5:1 on
+     this ground, which `test/theme.test.ts`'s HEAT_RAMPS suite caught. This
+     is `HEAT_RAMPS.sunset.paper` (state/theme.ts) — the reader's default, and
+     the only ramp baked into this stylesheet as a pre-JS fallback; the same
+     test file pins the two copies against each other. */
+  --color-calm: #157d3c;
+  --color-near: #9b5f07;
   --color-soon: #c2410c;
   --color-critical: #b91c1c;
 }
@@ -155,8 +159,8 @@
   --color-scrim: rgb(26 31 48 / 0.42);
   --color-glow: #fffaf0;
 
-  --color-calm: #15803d;
-  --color-near: #a16207;
+  --color-calm: #157d3c;
+  --color-near: #9b5f07;
   --color-soon: #c2410c;
   --color-critical: #b91c1c;
 }

@@ -187,6 +187,114 @@ export function applyTheme(theme: Theme, doc: Document = document): void {
   if (meta !== null) meta.setAttribute("content", THEME_COLOR[theme]);
 }
 
+// ---------------------------------------------------------------------------
+// Heat ramps
+// ---------------------------------------------------------------------------
+
+/**
+ * Which four colours `calm`/`near`/`soon`/`critical` are drawn in — a
+ * reader's pick, independent of `Theme`. `styles.css` still carries one ramp
+ * (`sunset`) baked into each `[data-theme]` block as the pre-JS default, the
+ * same reason the pre-paint script in index.html exists for `Theme` itself;
+ * `applyHeatRamp` below overrides those three tokens with an inline style
+ * once a reader has picked something else, which wins the cascade over any
+ * attribute-selector rule in the stylesheet without this needing a CSS block
+ * for every theme × ramp combination.
+ */
+export type HeatRampId = "sunset" | "ocean" | "mono";
+
+interface HeatRamp {
+  calm: string;
+  near: string;
+  soon: string;
+  critical: string;
+}
+
+/**
+ * Two grounds, not three: light and glass read the ramp identically already
+ * (`styles.css`'s glass block copies light's heat tokens outright), so this
+ * only needs the split `readableHue` already draws — dark, or everything
+ * that isn't.
+ */
+type Ground = "dark" | "paper";
+
+function groundFor(theme: Theme): Ground {
+  return theme === "dark" ? "dark" : "paper";
+}
+
+/**
+ * The three choices on offer, `sunset` first because it's the default.
+ *
+ * Every `paper` value clears the same ≥4.5:1 bar against a pale ground that
+ * `styles.css`'s own comment holds itself to for the ramp it ships inline —
+ * picking a different ramp must not be a readability downgrade. `dark`
+ * values have no such constraint (that ground has room to spare) and are
+ * chosen for clarity against near-black instead.
+ */
+export const HEAT_RAMPS: Record<HeatRampId, Record<Ground, HeatRamp>> = {
+  /**
+   * Green → yellow → orange → red — the "heat rising" story read the most
+   * literally, and the ramp every reader sees until they open this picker.
+   * `paper`'s middle two steps are Tailwind's 700 shade of each hue, chosen
+   * over 800 (one step darker) specifically because at 800 yellow and orange
+   * both collapse toward the same brown, and "under a week" next to "under 3
+   * days" stopped being tellable apart — 700 is the lightest shade of each
+   * that still clears 4.5:1.
+   */
+  sunset: {
+    dark: { calm: "#4ade80", near: "#facc15", soon: "#fb923c", critical: "#f87171" },
+    paper: { calm: "#157d3c", near: "#9b5f07", soon: "#c2410c", critical: "#b91c1c" },
+  },
+  /**
+   * Blue → teal → amber → red — cool while there's time, warm once there
+   * isn't, without ever touching green. The one ramp here that stays
+   * legible to red-green colour blindness the way `sunset` and its all-hues
+   * story cannot promise to: nothing in this set asks a reader to tell green
+   * apart from red, or teal apart from either.
+   */
+  ocean: {
+    dark: { calm: "#60a5fa", near: "#2dd4bf", soon: "#fbbf24", critical: "#f87171" },
+    paper: { calm: "#1d4ed8", near: "#0f766e", soon: "#b05109", critical: "#b91c1c" },
+  },
+  /**
+   * Grey, grey, darker grey, then red — colour spent on one thing only.
+   * `calm`/`near`/`soon` carry the ramp on lightness alone (brightening
+   * toward critical on a dark ground, darkening toward it on a pale one, the
+   * same direction the other two ramps' hues intensify in), so nothing here
+   * asks a reader to tell two hues apart at all — only `critical` is a
+   * colour, and it is the only one that needs to be.
+   */
+  mono: {
+    dark: { calm: "#6b7280", near: "#9ca3af", soon: "#d1d5db", critical: "#f87171" },
+    paper: { calm: "#5f6e83", near: "#475569", soon: "#44403c", critical: "#b91c1c" },
+  },
+};
+
+/**
+ * Write the chosen ramp onto the document as an inline style, which beats
+ * any `[data-theme]` rule in the stylesheet without needing one written for
+ * every theme × ramp pair. Idempotent and cheap enough to call on every
+ * render of the effect below — `sunset` re-writes the same values the
+ * stylesheet already has, which is a no-op the reader never sees.
+ */
+export function applyHeatRamp(
+  theme: Theme,
+  ramp: HeatRampId,
+  doc: Document = document,
+): void {
+  const palette = HEAT_RAMPS[ramp][groundFor(theme)];
+  const root = doc.documentElement.style;
+  root.setProperty("--color-calm", palette.calm);
+  root.setProperty("--color-near", palette.near);
+  root.setProperty("--color-soon", palette.soon);
+  root.setProperty("--color-critical", palette.critical);
+}
+
+/** Keeps the ramp in step with both the reader's pick and the ground it's drawn on. */
+export function useHeatRamp(theme: Theme, ramp: HeatRampId): void {
+  useEffect(() => applyHeatRamp(theme, ramp), [theme, ramp]);
+}
+
 function systemPrefersLight(): boolean {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
     return false;

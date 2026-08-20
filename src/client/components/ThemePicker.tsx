@@ -1,4 +1,4 @@
-import type { ThemeChoice } from "../state/theme.ts";
+import { HEAT_RAMPS, type HeatRampId, type Theme, type ThemeChoice } from "../state/theme.ts";
 import type { Prefs } from "../state/usePrefs.ts";
 import { Modal } from "./Modal.tsx";
 
@@ -25,17 +25,34 @@ const METER_MODES: Array<{ id: Prefs["meterMode"]; label: string }> = [
   { id: "days", label: "Per day" },
 ];
 
+/** Sunset first: it's the default, and every reader has already seen it. */
+const HEAT_RAMP_OPTIONS: Array<{ id: HeatRampId; label: string }> = [
+  { id: "sunset", label: "Sunset" },
+  { id: "ocean", label: "Ocean" },
+  { id: "mono", label: "Mono" },
+];
+
 export function ThemePicker({
   theme,
+  resolvedTheme,
   meterMode,
+  heatRamp,
   onUpdate,
   onClose,
 }: {
   theme: Prefs["theme"];
+  /**
+   * What `theme` actually resolves to right now — `"system"` isn't a ground
+   * to preview swatches against, so the ramp swatches below need the answer
+   * `useTheme` already computed rather than the raw choice.
+   */
+  resolvedTheme: Theme;
   meterMode: Prefs["meterMode"];
+  heatRamp: Prefs["heatRamp"];
   onUpdate: (p: Partial<Prefs>) => void;
   onClose: () => void;
 }) {
+  const ground = resolvedTheme === "dark" ? "dark" : "paper";
   return (
     <Modal label="Theme" onClose={onClose}>
       <p className="eyebrow text-ink">Theme</p>
@@ -79,6 +96,44 @@ export function ThemePicker({
             {m.label}
           </button>
         ))}
+      </div>
+
+      {/* calm/near/soon/critical, colour rather than what a tick counts —
+          see HeatRampId (state/theme.ts) for what each option is and why.
+          Swatches are the current ground's actual values, live: a colour
+          choice is exactly the kind of thing to see before picking, not
+          read a name for. */}
+      <p className="eyebrow mt-5 text-ink">Heat ramp</p>
+      <div role="group" aria-label="Heat ramp" className="mt-4 flex flex-col gap-1.5">
+        {HEAT_RAMP_OPTIONS.map((r) => {
+          const palette = HEAT_RAMPS[r.id][ground];
+          return (
+            <button
+              key={r.id}
+              type="button"
+              onClick={() => onUpdate({ heatRamp: r.id })}
+              aria-pressed={heatRamp === r.id}
+              className={`flex items-center justify-between gap-3 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                heatRamp === r.id
+                  ? "border-ink/70 text-ink"
+                  : "border-hairline text-faint hover:text-muted"
+              }`}
+            >
+              {r.label}
+              <span className="flex items-center gap-1" aria-hidden>
+                {[palette.calm, palette.near, palette.soon, palette.critical].map(
+                  (c, i) => (
+                    <span
+                      key={i}
+                      className="size-2.5 rounded-full"
+                      style={{ background: c }}
+                    />
+                  ),
+                )}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </Modal>
   );

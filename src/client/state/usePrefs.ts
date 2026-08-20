@@ -5,7 +5,7 @@ import { guessRegion } from "../../shared/time.ts";
 import type { SortMode } from "./sort.ts";
 import { KEYS, readJson, writeJson } from "./storage.ts";
 import type { TimelineGroup } from "./lanes.ts";
-import { DEFAULT_THEME_CHOICE, type ThemeChoice } from "./theme.ts";
+import { DEFAULT_THEME_CHOICE, type HeatRampId, type ThemeChoice } from "./theme.ts";
 import { DEFAULT_DAY_WIDTH } from "./zoom.ts";
 
 /**
@@ -146,6 +146,13 @@ export interface Prefs {
    * nothing to save.
    */
   theme: ThemeChoice;
+  /**
+   * Which four colours `calm`/`near`/`soon`/`critical` are drawn in — see
+   * `HeatRampId` (state/theme.ts) for what each option is and why. A theme
+   * choice in the same sense `theme` is one: it only changes how the ramp is
+   * drawn, never what it means or which state an event is actually in.
+   */
+  heatRamp: HeatRampId;
   /** False until the reader confirms or changes the guessed region. */
   regionConfirmed: boolean;
   /**
@@ -183,6 +190,7 @@ function defaults(): Prefs {
     showCompleted: true,
     showIgnored: false,
     theme: DEFAULT_THEME_CHOICE,
+    heatRamp: "sunset",
     regionConfirmed: false,
     showNextUp: true,
     meterMode: "percentage",

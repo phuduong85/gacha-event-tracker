@@ -39,7 +39,7 @@ import {
 import { clockFor, formatRemaining } from "../shared/time.ts";
 import { dailySummary, isDaily, resolveDaily } from "../shared/daily.ts";
 import { GameMetaProvider, type MetaResolver } from "./state/gameMeta.tsx";
-import { metaOnTheme, useTheme } from "./state/theme.ts";
+import { metaOnTheme, useHeatRamp, useTheme } from "./state/theme.ts";
 import {
   isCustomGameId,
   type CustomEvents,
@@ -163,6 +163,7 @@ export function App() {
   // the hook. Nothing else in the app asks what it is — the tokens in
   // styles.css answer for every component — except the hues below.
   const theme = useTheme(prefs.theme);
+  useHeatRamp(theme, prefs.heatRamp);
   /**
    * How every lane in this tree is named and coloured.
    *
@@ -807,7 +808,9 @@ export function App() {
       {themeOpen && (
         <ThemePicker
           theme={prefs.theme}
+          resolvedTheme={theme}
           meterMode={prefs.meterMode}
+          heatRamp={prefs.heatRamp}
           onUpdate={update}
           onClose={() => setThemeOpen(false)}
         />

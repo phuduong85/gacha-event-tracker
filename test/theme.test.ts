@@ -4,6 +4,7 @@ import { CUSTOM_HUES } from "../src/client/components/CustomForms.tsx";
 import { KEYS } from "../src/client/state/storage.ts";
 import {
   DEFAULT_THEME_CHOICE,
+  HEAT_RAMPS,
   metaOnTheme,
   readableHue,
   resolveTheme,
@@ -178,5 +179,53 @@ describe("the ground colour, in all three places it is written down", () => {
     expect(shell).toContain(THEME_COLOR.dark);
     expect(shell).toContain(THEME_COLOR.light);
     expect(shell).toContain(THEME_COLOR.glass);
+  });
+});
+
+describe("HEAT_RAMPS", () => {
+  const ids = Object.keys(HEAT_RAMPS) as Array<keyof typeof HEAT_RAMPS>;
+
+  test("every ramp's paper variant clears the same 4.5:1 bar the shipped one does", () => {
+    // The claim each ramp's own doc comment makes — checked here rather than
+    // trusted, the same way readableHue's light output is above.
+    for (const id of ids) {
+      const { calm, near, soon, critical } = HEAT_RAMPS[id].paper;
+      for (const step of [calm, near, soon, critical]) {
+        expect(contrast(step, THEME_COLOR.light)).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+
+  test("no ramp repeats a colour across its own four steps", () => {
+    // calm/near/soon/critical is meant to read as four states, on both
+    // grounds — a repeat would silently merge two of them into one.
+    for (const id of ids) {
+      for (const ground of ["dark", "paper"] as const) {
+        const steps = Object.values(HEAT_RAMPS[id][ground]);
+        expect(new Set(steps).size).toBe(steps.length);
+      }
+    }
+  });
+
+  test("the stylesheet's baked-in ramp is HEAT_RAMPS.sunset, exactly", async () => {
+    // styles.css carries `sunset` directly, as the pre-JS default applyHeatRamp
+    // (state/theme.ts) then redraws over — see that stylesheet's own comment
+    // on the light block. The two must never drift: a mismatch would mean
+    // the page paints one ramp and then visibly jumps to another once React
+    // mounts, even for a reader who never touched this setting.
+    const css = await Bun.file(
+      new URL("../src/client/styles.css", import.meta.url),
+    ).text();
+
+    const extract = (block: RegExp) => ({
+      calm: new RegExp(`${block.source}[^}]*?--color-calm:\\s*([^;]+);`, "s").exec(css)?.[1]?.trim(),
+      near: new RegExp(`${block.source}[^}]*?--color-near:\\s*([^;]+);`, "s").exec(css)?.[1]?.trim(),
+      soon: new RegExp(`${block.source}[^}]*?--color-soon:\\s*([^;]+);`, "s").exec(css)?.[1]?.trim(),
+      critical: new RegExp(`${block.source}[^}]*?--color-critical:\\s*([^;]+);`, "s").exec(css)?.[1]?.trim(),
+    });
+
+    expect(extract(/@theme\s*\{/)).toEqual(HEAT_RAMPS.sunset.dark);
+    expect(extract(/\[data-theme="light"\]\s*\{/)).toEqual(HEAT_RAMPS.sunset.paper);
+    expect(extract(/\[data-theme="glass"\]\s*\{/)).toEqual(HEAT_RAMPS.sunset.paper);
   });
 });
