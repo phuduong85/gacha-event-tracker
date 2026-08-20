@@ -953,13 +953,9 @@ function Section({
   const bleed = "0 -2px 0 0 var(--color-ground), 0 2px 0 0 var(--color-ground)";
 
   return (
-    // bg-ground here too, not only on the sticky pieces inside: this section's
-    // own pt-5 padding has no colour of its own, and before the heading below
-    // it actually engages "stuck" mode — at the very top of the page, most
-    // visibly with "Next to expire" collapsed down to almost nothing — that
-    // padding is exposed as a real gap the box-shadow bleed never reached,
-    // since that only covers the seam once something is actually stuck.
-    <section className={`pt-5 ${sticky ? "bg-ground" : ""}`}>
+    // The pt-5 that used to live here moved onto the row below instead — see
+    // the note on that row for why.
+    <section>
       <div
         ref={headRef}
         // items-center rather than items-baseline: the sort pills carry their
@@ -968,7 +964,15 @@ function Section({
         // poke up past the row's own top edge and into the sticky header
         // above it, where the header's border rendered across the pill.
         // Centering keeps the pill fully inside the row's own box instead.
-        className={`flex items-center justify-between gap-3 px-4 pb-2 ${
+        //
+        // pt-5 lives on this row now, not on the section around it: a
+        // sticky element's "top" pins its box at that exact viewport
+        // position, ignoring whatever margin or padding got it there in
+        // normal flow — so the section's own pt-5 gave this row breathing
+        // room from the header above only until scrolling made it stick,
+        // at which point it sat flush against the header with none. Padding
+        // that belongs to the sticky element itself is preserved either way.
+        className={`flex items-center justify-between gap-3 px-4 pb-2 pt-5 ${
           sticky ? "lg:sticky lg:z-20 lg:bg-ground" : ""
         }`}
         style={sticky ? { top: stickyTop, boxShadow: bleed } : undefined}
