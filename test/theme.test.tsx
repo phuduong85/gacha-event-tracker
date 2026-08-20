@@ -10,21 +10,22 @@ describe("the theme control", () => {
     );
   }
 
-  test("offers all three choices", () => {
+  test("offers all four choices", () => {
     const html = render("system");
     expect(html).toContain("System");
     expect(html).toContain("Dark");
     expect(html).toContain("Light");
+    expect(html).toContain("Glass");
   });
 
-  test("marks the reader's stored choice as pressed, not the other two", () => {
+  test("marks the reader's stored choice as pressed, not the other three", () => {
     const html = render("light");
     const group = /<div role="group" aria-label="Theme"[^]*?<\/div>/.exec(html);
     expect(group).not.toBeNull();
     const pressed = [...group![0].matchAll(/aria-pressed="(true|false)"/g)].map(
       (m) => m[1],
     );
-    // Order in THEMES is Dark, Light, System.
-    expect(pressed).toEqual(["false", "true", "false"]);
+    // Order in THEMES is Dark, Light, Glass, System.
+    expect(pressed).toEqual(["false", "true", "false", "false"]);
   });
 });

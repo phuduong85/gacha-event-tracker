@@ -5,8 +5,9 @@ import type { GameMeta } from "../../shared/games.ts";
  * Which ground the app is drawn on.
  *
  * Almost everything about this is settled in CSS: `styles.css` holds the dark
- * tokens as the defaults and re-strikes them under `[data-theme="light"]`, so
- * no component ever asks which theme it is in. Three things cannot be settled
+ * tokens as the defaults and re-strikes them under `[data-theme="light"]` and
+ * `[data-theme="glass"]`, so no component ever asks which theme it is in.
+ * Three things cannot be settled
  * there, and they are what this module is:
  *
  * - **Resolving the reader's answer.** "System" is a choice about a preference
@@ -18,11 +19,15 @@ import type { GameMeta } from "../../shared/games.ts";
  * - **The browser's own chrome.** `<meta name="theme-color">` is markup, so it
  *   is set from here rather than styled.
  */
-export type Theme = "dark" | "light";
+export type Theme = "dark" | "light" | "glass";
 
 /**
  * What the reader chose, which is not the same as what gets drawn: `system`
- * defers to the device, and the other two override it outright.
+ * defers to the device, and the other three override it outright.
+ *
+ * Glass is never what `system` resolves to (see `resolveTheme` below) — it is
+ * a deliberate pick offered beside light, not a variant the OS preference can
+ * land a reader in without asking.
  */
 export type ThemeChoice = Theme | "system";
 
@@ -44,12 +49,14 @@ export const LIGHT_QUERY = "(prefers-color-scheme: light)";
 /**
  * The `--color-ground` of each theme, duplicated out of `styles.css` because
  * `<meta name="theme-color">` is markup and cannot read a custom property. A
- * test pins the two copies together; the browser chrome disagreeing with the
- * page is exactly the kind of drift nobody files a bug about.
+ * test pins each copy against its stylesheet value; the browser chrome
+ * disagreeing with the page is exactly the kind of drift nobody files a bug
+ * about.
  */
 export const THEME_COLOR: Record<Theme, string> = {
   dark: "#12141c",
   light: "#edf0f7",
+  glass: "#f7f1e6",
 };
 
 /** What the reader's choice comes to on this device, right now. */
@@ -122,11 +129,14 @@ const LIGHT_GROUND = parseHex(THEME_COLOR.light) as [number, number, number];
  * ground and every one of them clears the bar there, so adding a theme must
  * not move a single pixel of the app as it shipped.
  *
- * On light it is a scale towards black — the channels keep their ratios, so
- * Genshin's blue stays Genshin's blue rather than becoming a computed
- * near-neighbour of Star Rail's. A hue that already reads (Fate's navy) is left
- * exactly as it is, and so is anything this cannot parse: a reader's stored
- * colour is not ours to reinterpret when we do not understand it.
+ * On light — and on glass, which shares this branch rather than getting its
+ * own: its ground (styles.css) is just as pale as light's `--color-ground`,
+ * so the same scale clears the same bar — it is a scale towards black — the
+ * channels keep their ratios, so Genshin's blue stays Genshin's blue rather
+ * than becoming a computed near-neighbour of Star Rail's. A hue that already
+ * reads (Fate's navy) is left exactly as it is, and so is anything this
+ * cannot parse: a reader's stored colour is not ours to reinterpret when we
+ * do not understand it.
  */
 export function readableHue(hue: string, theme: Theme): string {
   if (theme === "dark") return hue;

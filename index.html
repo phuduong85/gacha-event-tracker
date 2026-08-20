@@ -12,20 +12,22 @@
     <meta name="theme-color" content="#12141c" />
 
     <!--
-      This page ships dark and offers light; both are drawn deliberately, and
-      neither wants a third party guessing at one from the other.
+      This page ships dark and offers light (and glass, a second light
+      palette over a wallpaper); all are drawn deliberately, and none of them
+      wants a third party guessing at one from the other.
 
       color-scheme tells the browser (and well-behaved extensions) which
       rendering is intended, so form controls and scrollbars come out matching
-      it and nothing tries to synthesise the other theme. "dark light" rather
+      it and nothing tries to synthesise another theme. "dark light" rather
       than a fixed value because the script below already decides which one
-      this load actually is.
+      this load actually is — glass gets "light" here too, since it is a pale
+      palette as far as color-scheme cares.
 
       darkreader-lock is Dark Reader's documented opt-out. This app now ships
-      its own light and dark palettes, so Dark Reader inverting either one
-      would wreck the urgency ramp the same way it would have wrecked the old
-      dark-only page — the colours in this UI carry meaning, so having them
-      re-mapped is not a cosmetic problem.
+      its own light, dark, and glass palettes, so Dark Reader inverting any of
+      them would wreck the urgency ramp the same way it would have wrecked the
+      old dark-only page — the colours in this UI carry meaning, so having
+      them re-mapped is not a cosmetic problem.
     -->
     <meta name="color-scheme" content="dark light" />
     <meta name="darkreader-lock" />
@@ -34,14 +36,14 @@
       The theme, before first paint.
 
       Dark is the default and needs nothing: it is what the stylesheet says with
-      no attribute set. A reader who chose light is the case this exists for —
-      without it they get a dark page for as long as the bundle takes to arrive
-      and mount, on every single load, which is a flash of the thing they
-      switched off.
+      no attribute set. A reader who chose light or glass is the case this
+      exists for — without it they get a dark page for as long as the bundle
+      takes to arrive and mount, on every single load, which is a flash of the
+      thing they switched off.
 
       It reads the same stored key as the app (`state/storage.ts`) and applies
       the same attribute (`state/theme.ts`), and it cannot import either, so a
-      test pins the three copies together. Wrapped in try/catch and doing
+      test pins each theme's copies together. Wrapped in try/catch and doing
       nothing on failure: a reader with storage disabled gets the default theme,
       never a blank page.
     -->
@@ -51,13 +53,18 @@
           var prefs = JSON.parse(
             localStorage.getItem("gacha-tracker:v1:prefs") || "{}",
           );
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (prefs.theme === "glass") {
+            document.documentElement.dataset.theme = "glass";
+            if (meta) meta.setAttribute("content", "#f7f1e6");
+            return;
+          }
           var light =
             prefs.theme === "light" ||
             (prefs.theme === "system" &&
               window.matchMedia("(prefers-color-scheme: light)").matches);
           if (!light) return;
           document.documentElement.dataset.theme = "light";
-          var meta = document.querySelector('meta[name="theme-color"]');
           if (meta) meta.setAttribute("content", "#edf0f7");
         } catch (e) {
           /* No stored preference we can read: the default stands. */

@@ -5,11 +5,14 @@ import { Modal } from "./Modal.tsx";
 /**
  * Dark first, because that is what the app is and what this control is offered
  * *from*; `System` last, because it is the answer that defers rather than
- * decides.
+ * decides. Glass sits beside Light rather than after System — it is a
+ * deliberate pick like Light is, not a variant System can ever resolve to
+ * (see `ThemeChoice` in state/theme.ts).
  */
 const THEMES: Array<{ id: ThemeChoice; label: string }> = [
   { id: "dark", label: "Dark" },
   { id: "light", label: "Light" },
+  { id: "glass", label: "Glass" },
   { id: "system", label: "System" },
 ];
 

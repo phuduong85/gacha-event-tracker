@@ -107,6 +107,100 @@
   --color-critical: #c81e3c;
 }
 
+/*
+ * Light Liquid Glass. An explicit third pick offered beside Light, never
+ * something `system` resolves to (see `ThemeChoice` in state/theme.ts).
+ *
+ * Ink, muted, faint and the heat ramp below are the exact Light values above
+ * rather than a re-tune: this ground is just as pale as Light's flat
+ * `--color-ground`, so the same 4.5:1-tested set already reads on it.
+ *
+ * `--color-ground` itself stays *opaque* on purpose, rather than translucent
+ * the way a "glass" name might suggest. It is reused all over the app for
+ * things that must stay solid and legible — form inputs (CustomForms.tsx,
+ * ProgressControls.tsx), Timeline's sticky row labels and date chips, the
+ * app header — and making all of those see-through in one move would trade
+ * a wallpaper glimpse behind a handful of them for a legibility bug in every
+ * other one. The wallpaper (below) shows through everywhere that already had
+ * no background at all, which is most of the page: the event list itself,
+ * the sidebar rail, the space around the header's rounded corners.
+ *
+ * `--color-surface` and `--color-raised` are the two tokens actually made
+ * translucent, because both have a short, checked list of call sites — Modal
+ * and EventDetail's dialog sheet for the first, Toast/UpdateNotice and the
+ * active view-tab pill for the second — each one a floating panel rather
+ * than inline content, which is exactly where blurring what's behind it
+ * (further down this file) reads as glass instead of as a legibility bug.
+ *
+ * `--color-hairline` is a warm, semi-transparent taupe rather than the
+ * translucent white a glass theme reaches for by reflex: white-on-white is
+ * how a divider disappears against this theme's own opaque cream chrome, so
+ * this is a colour with enough of its own presence to hold a line on either
+ * the cream chrome or the gradient wallpaper beneath it.
+ */
+:root[data-theme="glass"] {
+  color-scheme: light;
+
+  --color-ground: #f7f1e6;
+  --color-surface: rgba(255, 255, 255, 0.6);
+  --color-raised: rgba(255, 255, 255, 0.4);
+  --color-hairline: rgba(120, 108, 94, 0.32);
+  --color-ink: #151824;
+  --color-ink-strong: #000000;
+  --color-muted: #535b73;
+  --color-faint: #767e94;
+  --color-scrim: rgb(26 31 48 / 0.42);
+  --color-glow: #fffaf0;
+
+  --color-calm: #8a92a8;
+  --color-near: #2b62c6;
+  --color-soon: #8a6008;
+  --color-critical: #c81e3c;
+}
+
+/*
+ * The wallpaper itself — a warm dawn aurora (peach, muted gold, dusty mauve)
+ * over a pale cream base, reused from tasktracker's own Liquid Glass theme
+ * rather than designed again from scratch. `background-attachment: fixed` so
+ * the glow stays pinned to the viewport as the page scrolls under it, the
+ * way light falling on a surface would, rather than scrolling with the
+ * content like a printed pattern.
+ */
+:root[data-theme="glass"] body {
+  background-color: var(--color-ground);
+  background-image:
+    radial-gradient(
+      ellipse 1000px 800px at 0% -5%,
+      rgba(255, 158, 120, 0.45),
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 1000px 800px at 100% -5%,
+      rgba(216, 168, 74, 0.4),
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 800px 700px at 50% 65%,
+      rgba(181, 140, 158, 0.25),
+      transparent 65%
+    ),
+    linear-gradient(180deg, #fbf5ea 0%, #f7f1e6 50%, #f2e9da 100%);
+  background-attachment: fixed;
+  background-size: cover;
+}
+
+/*
+ * The panels actually made translucent above (see that block's comment for
+ * which, and why only those) get blurred rather than just dimmed, so a
+ * floating dialog or toast reads as frosted glass over the page instead of
+ * a smudge with content bleeding through it.
+ */
+:root[data-theme="glass"] .bg-surface,
+:root[data-theme="glass"] .bg-raised {
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
 html,
 body,
 #root {

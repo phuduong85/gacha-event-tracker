@@ -21,6 +21,9 @@ import {
  * the ground colour is written down in three places that cannot import each
  * other (the stylesheet, this module, the pre-paint script in the shell), so
  * the copies are checked against each other rather than trusted.
+ *
+ * Glass reuses this same pinning, both senses: it shares light's hue branch
+ * (below), and its own ground gets the identical three-place check.
  */
 
 // An independent implementation of WCAG contrast — deliberately not the one in
@@ -64,6 +67,11 @@ describe("resolveTheme", () => {
   test("system is the device's answer, both ways", () => {
     expect(resolveTheme("system", true)).toBe("light");
     expect(resolveTheme("system", false)).toBe("dark");
+  });
+
+  test("glass is a pick, not something system can land on", () => {
+    expect(resolveTheme("glass", true)).toBe("glass");
+    expect(resolveTheme("glass", false)).toBe("glass");
   });
 });
 
@@ -110,6 +118,21 @@ describe("readableHue", () => {
   test("shorthand hex is understood rather than passed through", () => {
     expect(readableHue("#3d6", "light")).toBe(readableHue("#33dd66", "light"));
   });
+
+  test("every hue reads on the glass ground too", () => {
+    for (const hue of HUES) {
+      const adjusted = readableHue(hue, "glass");
+      expect(contrast(adjusted, THEME_COLOR.glass)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  test("glass darkens a hue exactly the way light does", () => {
+    // Glass shares light's branch in readableHue rather than getting its own
+    // — its ground is just as pale, so there is nothing to compute twice.
+    for (const hue of HUES) {
+      expect(readableHue(hue, "glass")).toBe(readableHue(hue, "light"));
+    }
+  });
 });
 
 describe("metaOnTheme", () => {
@@ -132,12 +155,16 @@ describe("the ground colour, in all three places it is written down", () => {
       new URL("../src/client/styles.css", import.meta.url),
     ).text();
 
-    // The dark value is in @theme, the light one under the attribute selector.
+    // The dark value is in @theme, the other two each under their own
+    // attribute selector.
     const dark = /@theme\s*\{[^}]*?--color-ground:\s*([^;]+);/s.exec(css);
     const light =
       /\[data-theme="light"\]\s*\{[^}]*?--color-ground:\s*([^;]+);/s.exec(css);
+    const glass =
+      /\[data-theme="glass"\]\s*\{[^}]*?--color-ground:\s*([^;]+);/s.exec(css);
     expect(dark?.[1]?.trim()).toBe(THEME_COLOR.dark);
     expect(light?.[1]?.trim()).toBe(THEME_COLOR.light);
+    expect(glass?.[1]?.trim()).toBe(THEME_COLOR.glass);
   });
 
   test("the shell paints the right ground before the bundle arrives", async () => {
@@ -145,10 +172,11 @@ describe("the ground colour, in all three places it is written down", () => {
       new URL("../index.html", import.meta.url),
     ).text();
 
-    // The pre-paint script is the only reason a reader on light does not get a
-    // dark flash on every load, and it cannot import any of this.
+    // The pre-paint script is the only reason a reader on light or glass does
+    // not get a dark flash on every load, and it cannot import any of this.
     expect(shell).toContain(KEYS.prefs);
     expect(shell).toContain(THEME_COLOR.dark);
     expect(shell).toContain(THEME_COLOR.light);
+    expect(shell).toContain(THEME_COLOR.glass);
   });
 });
