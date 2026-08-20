@@ -941,6 +941,17 @@ function Section({
   const [headRef, headHeight] = useElementHeight<HTMLDivElement>();
   const sticky = stickyTop !== undefined;
 
+  // Adjacent sticky/composited layers (this against the header above it, the
+  // list below it) can round to adjacent device pixels a hair apart at some
+  // zoom/DPI combinations, which shows as a hairline sliver of whatever sits
+  // behind both — first spotted between this and the header, then again
+  // between the legend and the first row once that one was patched. Rather
+  // than chase exact pixel offsets per seam, both sticky pieces bleed their
+  // own background a couple of px past their own top and bottom edges —
+  // paint only, no layout effect, so it cannot open a gap of its own the way
+  // a negative "top" adjustment did.
+  const bleed = "0 -2px 0 0 var(--color-ground), 0 2px 0 0 var(--color-ground)";
+
   return (
     <section className="pt-5">
       <div
@@ -948,14 +959,7 @@ function Section({
         className={`flex items-baseline justify-between gap-3 px-4 pb-2 ${
           sticky ? "lg:sticky lg:z-20 lg:bg-ground" : ""
         }`}
-        // -1px rather than an exact abutment: two independently composited
-        // sticky layers can round to adjacent device pixels a hair apart at
-        // some zoom/DPI combinations, which shows as a hairline sliver of
-        // whatever sits behind both. Sliding this one under the sticky
-        // header by a pixel — safely hidden, since the header's z-index is
-        // higher — costs nothing visible and removes the seam outright
-        // rather than chasing the rounding that caused it.
-        style={sticky ? { top: (stickyTop ?? 0) - 1 } : undefined}
+        style={sticky ? { top: stickyTop, boxShadow: bleed } : undefined}
       >
         <h2 className="eyebrow">{title}</h2>
         {action ?? (hint !== undefined && <p className="text-xs text-faint">{hint}</p>)}
@@ -963,7 +967,7 @@ function Section({
       {legend === true && (
         <div
           className={sticky ? "lg:sticky lg:z-20 lg:border-b lg:border-hairline lg:bg-ground" : undefined}
-          style={sticky ? { top: (stickyTop ?? 0) + headHeight - 1 } : undefined}
+          style={sticky ? { top: (stickyTop ?? 0) + headHeight, boxShadow: bleed } : undefined}
         >
           <Legend />
         </div>
