@@ -66,6 +66,10 @@ export function EventRow({
     : clock.msRemaining === null
       ? "end date unknown"
       : formatRemaining(clock.msRemaining);
+  // "Remaining" only makes sense once the clock is actually running down —
+  // "starts in" and "end date unknown" already say what kind of time this is
+  // without it.
+  const showsRemaining = !clock.upcoming && clock.msRemaining !== null;
 
   return (
     <li
@@ -111,40 +115,47 @@ export function EventRow({
         <span aria-hidden className="row-rail mt-0.5 w-[3px] shrink-0 rounded-full" />
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-baseline justify-between gap-3">
-            <div className="min-w-0">
-              <span className="eyebrow flex items-center gap-1.5 truncate">
-                <span style={{ color: game.hue }}>{game.short}</span>
-                {/* A date the reader typed is never allowed to look like one
-                    a source published. */}
-                {isCustomEventId(event.id) && (
-                  <span className="rounded-[3px] border border-hairline px-1 py-px text-[0.5625rem] tracking-normal text-faint">
-                    yours
-                  </span>
-                )}
-                {ignored && (
-                  <span className="rounded-[3px] bg-hairline px-1 py-px text-[0.5625rem] tracking-normal text-muted">
-                    ignored
-                  </span>
-                )}
-              </span>
-              <span
-                className={`row-title block truncate text-[0.9375rem] font-medium leading-snug ${
-                  completed ? "line-through decoration-faint" : ""
-                }`}
-              >
-                {event.title}
-              </span>
-            </div>
-
+          <div className="min-w-0">
+            <span className="eyebrow flex items-center gap-1.5 truncate">
+              <span style={{ color: game.hue }}>{game.short}</span>
+              {/* A date the reader typed is never allowed to look like one
+                  a source published. */}
+              {isCustomEventId(event.id) && (
+                <span className="rounded-[3px] border border-hairline px-1 py-px text-[0.5625rem] tracking-normal text-faint">
+                  yours
+                </span>
+              )}
+              {ignored && (
+                <span className="rounded-[3px] bg-hairline px-1 py-px text-[0.5625rem] tracking-normal text-muted">
+                  ignored
+                </span>
+              )}
+            </span>
             <span
-              className="tnum row-count shrink-0 font-display text-sm font-semibold"
-              style={{
-                color: clock.msRemaining === null ? "var(--color-faint)" : heat,
-              }}
+              className={`row-title block truncate text-[0.9375rem] font-medium leading-snug ${
+                completed ? "line-through decoration-faint" : ""
+              }`}
             >
+              {event.title}
+            </span>
+          </div>
+
+          {/* Left-aligned rather than pinned to the row's right edge, which
+              used to sit it directly over the game icon watermark — the
+              reader's eye landed on the countdown and the art fighting for
+              the same pixels. Sized to be the thing this row leads with. */}
+          <div
+            className="tnum row-count mt-1 flex items-baseline gap-1.5"
+            style={{
+              color: clock.msRemaining === null ? "var(--color-faint)" : heat,
+            }}
+          >
+            <span className="font-display text-xl font-bold leading-none">
               {countdown}
             </span>
+            {showsRemaining && (
+              <span className="text-xs font-medium text-faint">remaining</span>
+            )}
           </div>
 
           {(status === "doing" ||
