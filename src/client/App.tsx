@@ -948,7 +948,14 @@ function Section({
         className={`flex items-baseline justify-between gap-3 px-4 pb-2 ${
           sticky ? "lg:sticky lg:z-20 lg:bg-ground" : ""
         }`}
-        style={sticky ? { top: stickyTop } : undefined}
+        // -1px rather than an exact abutment: two independently composited
+        // sticky layers can round to adjacent device pixels a hair apart at
+        // some zoom/DPI combinations, which shows as a hairline sliver of
+        // whatever sits behind both. Sliding this one under the sticky
+        // header by a pixel — safely hidden, since the header's z-index is
+        // higher — costs nothing visible and removes the seam outright
+        // rather than chasing the rounding that caused it.
+        style={sticky ? { top: (stickyTop ?? 0) - 1 } : undefined}
       >
         <h2 className="eyebrow">{title}</h2>
         {action ?? (hint !== undefined && <p className="text-xs text-faint">{hint}</p>)}
@@ -956,7 +963,7 @@ function Section({
       {legend === true && (
         <div
           className={sticky ? "lg:sticky lg:z-20 lg:border-b lg:border-hairline lg:bg-ground" : undefined}
-          style={sticky ? { top: (stickyTop ?? 0) + headHeight } : undefined}
+          style={sticky ? { top: (stickyTop ?? 0) + headHeight - 1 } : undefined}
         >
           <Legend />
         </div>
