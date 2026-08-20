@@ -37,11 +37,11 @@
      the surface reads as lit from above in both. */
   --color-glow: #1a1e2c;
 
-  /* Heat ramp: monotonic in salience, dim → blue → amber → red. */
-  --color-calm: #55607f;
-  --color-near: #5b8def;
-  --color-soon: #e8b33c;
-  --color-critical: #ff4d6a;
+  /* Heat ramp: monotonic in salience, green → yellow → orange → red. */
+  --color-calm: #4ade80;
+  --color-near: #facc15;
+  --color-soon: #fb923c;
+  --color-critical: #f87171;
 
   --font-display: "Chakra Petch", ui-sans-serif, system-ui, sans-serif;
   --font-body: "Public Sans", ui-sans-serif, system-ui, sans-serif;
@@ -99,12 +99,15 @@
   /* The ramp again, re-struck for a light ground. Every step keeps its meaning
      and its ordering; what changes is that each one is now dark enough to read
      as small text on `ground` (≥ 4.5:1), which the dark theme's values are
-     nowhere near — `soon` in particular is 1.9:1 on paper, and urgency the
-     reader cannot read is not urgency. */
-  --color-calm: #8a92a8;
-  --color-near: #2b62c6;
-  --color-soon: #8a6008;
-  --color-critical: #c81e3c;
+     nowhere near. Each is Tailwind's own 700 shade of that hue family — chosen
+     over the 800 shade one step darker because at 800, yellow and orange both
+     collapse toward the same brown (that was tried, and `near` and `soon`
+     stopped being tellable apart), and 700 is the lightest shade of each that
+     still clears the bar. */
+  --color-calm: #15803d;
+  --color-near: #a16207;
+  --color-soon: #c2410c;
+  --color-critical: #b91c1c;
 }
 
 /*
@@ -152,10 +155,10 @@
   --color-scrim: rgb(26 31 48 / 0.42);
   --color-glow: #fffaf0;
 
-  --color-calm: #8a92a8;
-  --color-near: #2b62c6;
-  --color-soon: #8a6008;
-  --color-critical: #c81e3c;
+  --color-calm: #15803d;
+  --color-near: #a16207;
+  --color-soon: #c2410c;
+  --color-critical: #b91c1c;
 }
 
 /*
