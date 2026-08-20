@@ -154,6 +154,18 @@ export interface Prefs {
    * and the answer is remembered rather than asked again every visit.
    */
   showNextUp: boolean;
+  /**
+   * What each tick of the depletion meter counts.
+   *
+   * `percentage` (the default) slices every event's own window into 24 equal
+   * ticks regardless of how long that window is — a 5-day event and a
+   * 30-day event both drain across the same 24 ticks, so what a filled tick
+   * means differs event to event. `days` makes a tick mean one literal day
+   * remaining instead, capped at 24: an event with more than 24 days left
+   * shows a full bar until it actually crosses under 24, then counts down
+   * one tick per day like the rest.
+   */
+  meterMode: "percentage" | "days";
 }
 
 function defaults(): Prefs {
@@ -173,6 +185,7 @@ function defaults(): Prefs {
     theme: DEFAULT_THEME_CHOICE,
     regionConfirmed: false,
     showNextUp: true,
+    meterMode: "percentage",
   };
 }
 

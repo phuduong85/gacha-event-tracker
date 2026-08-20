@@ -1,5 +1,6 @@
 import { useGameMeta } from "../state/gameMeta.tsx";
 import { formatRemaining } from "../../shared/time.ts";
+import type { Prefs } from "../state/usePrefs.ts";
 import type { RowEvent } from "./EventRow.tsx";
 import { Meter, URGENCY_COLOR } from "./Meter.tsx";
 
@@ -19,6 +20,7 @@ export function NextUp({
   onOpen,
   collapsed,
   onToggleCollapsed,
+  meterMode,
 }: {
   /**
    * The soonest-expiring events the reader has neither finished nor ignored,
@@ -33,6 +35,7 @@ export function NextUp({
   /** Whether the panel is shrunk down to just its own heading. */
   collapsed: boolean;
   onToggleCollapsed: () => void;
+  meterMode: Prefs["meterMode"];
 }) {
   const gameMeta = useGameMeta();
   const [lead, ...rest] = rows;
@@ -129,6 +132,8 @@ export function NextUp({
           <div className="mt-4">
             <Meter
               progress={clock.progress}
+              msRemaining={clock.msRemaining}
+              mode={meterMode}
               urgency={clock.urgency}
               label={`${event.title} time remaining`}
             />

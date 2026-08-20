@@ -44,7 +44,12 @@ function render(node: React.ReactElement): string {
 describe("Archive", () => {
   test("says so when nothing has been finished yet", () => {
     const html = render(
-      <Archive rows={[]} effortFor={() => undefined} onOpen={() => {}} />,
+      <Archive
+        rows={[]}
+        effortFor={() => undefined}
+        onOpen={() => {}}
+        meterMode="percentage"
+      />,
     );
     expect(html).toContain("Nothing finished yet");
   });
@@ -55,6 +60,7 @@ describe("Archive", () => {
         rows={[row(), row({ id: "hsr:trailblaze-anniversary:2026-04-01", game: "hsr" })]}
         effortFor={() => undefined}
         onOpen={() => {}}
+        meterMode="percentage"
       />,
     );
     expect(html).toContain("Windblume Festival");
@@ -70,7 +76,12 @@ describe("Archive", () => {
     const first = row({ id: "genshin:a:2026-01-01", title: "Finished First" });
     const second = row({ id: "genshin:b:2026-06-01", title: "Finished Second" });
     const html = render(
-      <Archive rows={[second, first]} effortFor={() => undefined} onOpen={() => {}} />,
+      <Archive
+        rows={[second, first]}
+        effortFor={() => undefined}
+        onOpen={() => {}}
+        meterMode="percentage"
+      />,
     );
     expect(html.indexOf("Finished Second")).toBeLessThan(
       html.indexOf("Finished First"),

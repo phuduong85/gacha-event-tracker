@@ -9,6 +9,7 @@ import {
 } from "../../shared/time.ts";
 import { EFFORT, pressure, type Effort } from "../../shared/effort.ts";
 import type { Status } from "../state/useProgress.ts";
+import type { Prefs } from "../state/usePrefs.ts";
 import { Meter, URGENCY_COLOR } from "./Meter.tsx";
 
 export interface RowEvent {
@@ -34,6 +35,7 @@ interface EventRowProps {
   ignored?: boolean | undefined;
   onRestore?: ((id: string) => void) | undefined;
   onOpen: (id: string) => void;
+  meterMode: Prefs["meterMode"];
 }
 
 export function EventRow({
@@ -45,6 +47,7 @@ export function EventRow({
   ignored = false,
   onRestore,
   onOpen,
+  meterMode,
 }: EventRowProps) {
   const gameMeta = useGameMeta();
   const iconUrl = useGameIconUrl();
@@ -205,6 +208,8 @@ export function EventRow({
           <div className="mt-2.5">
             <Meter
               progress={clock.upcoming ? 1 : clock.progress}
+              msRemaining={clock.upcoming ? 0 : clock.msRemaining}
+              mode={meterMode}
               urgency={clock.urgency}
               label={`${event.title}: ${caption}`}
             />

@@ -412,6 +412,7 @@ export function App() {
       ignored={isIgnored(row.event.id)}
       onRestore={(id) => ignored.toggle(id)}
       onOpen={setOpenId}
+      meterMode={prefs.meterMode}
     />
   );
 
@@ -547,6 +548,7 @@ export function App() {
             onOpen={setOpenId}
             collapsed={!prefs.showNextUp}
             onToggleCollapsed={() => update({ showNextUp: !prefs.showNextUp })}
+            meterMode={prefs.meterMode}
           />
 
           {focusBar(true)}
@@ -646,6 +648,7 @@ export function App() {
             rows={archived}
             effortFor={(id) => prog.progress[id]?.effort}
             onOpen={setOpenId}
+            meterMode={prefs.meterMode}
           />
         </>
       )}
@@ -804,6 +807,7 @@ export function App() {
       {themeOpen && (
         <ThemePicker
           theme={prefs.theme}
+          meterMode={prefs.meterMode}
           onUpdate={update}
           onClose={() => setThemeOpen(false)}
         />
@@ -869,6 +873,7 @@ export function App() {
           note={prog.progress[openRow.event.id]?.note ?? ""}
           region={prefs.region}
           now={now}
+          meterMode={prefs.meterMode}
           daily={repeatsDaily(openRow)}
           detectedDaily={prefs.detectDaily && isDaily(openRow.event)}
           dailyDays={daily.daysFor(openRow.event.id)}

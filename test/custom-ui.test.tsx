@@ -158,7 +158,12 @@ describe("EventRow provenance", () => {
   test("marks the reader's own event as theirs", () => {
     const html = render(
       <ul>
-        <EventRow row={row(OWN.id)} completed={false} onOpen={() => {}} />
+        <EventRow
+          row={row(OWN.id)}
+          completed={false}
+          onOpen={() => {}}
+          meterMode="percentage"
+        />
       </ul>,
     );
     expect(html).toContain("yours");
@@ -171,6 +176,7 @@ describe("EventRow provenance", () => {
           row={row("genshin:windblume-festival:2026-03-14")}
           completed={false}
           onOpen={() => {}}
+          meterMode="percentage"
         />
       </ul>,
     );

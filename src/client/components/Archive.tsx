@@ -1,4 +1,5 @@
 import type { Effort } from "../../shared/effort.ts";
+import type { Prefs } from "../state/usePrefs.ts";
 import { EventRow, type RowEvent } from "./EventRow.tsx";
 
 /**
@@ -13,11 +14,13 @@ export function Archive({
   rows,
   effortFor,
   onOpen,
+  meterMode,
 }: {
   /** Done events only, already sorted by when each was marked done. */
   rows: RowEvent[];
   effortFor: (id: string) => Effort | undefined;
   onOpen: (id: string) => void;
+  meterMode: Prefs["meterMode"];
 }) {
   if (rows.length === 0) {
     return (
@@ -37,6 +40,7 @@ export function Archive({
           status="done"
           effort={effortFor(row.event.id)}
           onOpen={onOpen}
+          meterMode={meterMode}
         />
       ))}
     </ul>

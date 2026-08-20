@@ -21,6 +21,7 @@ import { ProgressControls } from "./ProgressControls.tsx";
 import { DailyChecklist } from "./DailyChecklist.tsx";
 import { dailyOverride } from "../../shared/daily.ts";
 import type { GameId, Region } from "../../shared/schema.ts";
+import type { Prefs } from "../state/usePrefs.ts";
 import { GameIcon } from "./GameIcon.tsx";
 import { Meter, URGENCY_COLOR } from "./Meter.tsx";
 
@@ -33,6 +34,7 @@ export function EventDetail({
   note,
   region,
   now,
+  meterMode,
   daily,
   detectedDaily,
   dailyDays,
@@ -53,6 +55,7 @@ export function EventDetail({
   note: string;
   region: Region;
   now: number;
+  meterMode: Prefs["meterMode"];
   /** Whether to treat this as repeating, the reader's answer included. */
   daily: boolean;
   /** What the source's wording implies, so an override can fall back to it. */
@@ -133,6 +136,8 @@ export function EventDetail({
         <div className="mt-4">
           <Meter
             progress={clock.progress}
+            msRemaining={clock.msRemaining}
+            mode={meterMode}
             urgency={clock.urgency}
             label="Time remaining"
             animate={false}
