@@ -953,7 +953,13 @@ function Section({
   const bleed = "0 -2px 0 0 var(--color-ground), 0 2px 0 0 var(--color-ground)";
 
   return (
-    <section className="pt-5">
+    // bg-ground here too, not only on the sticky pieces inside: this section's
+    // own pt-5 padding has no colour of its own, and before the heading below
+    // it actually engages "stuck" mode — at the very top of the page, most
+    // visibly with "Next to expire" collapsed down to almost nothing — that
+    // padding is exposed as a real gap the box-shadow bleed never reached,
+    // since that only covers the seam once something is actually stuck.
+    <section className={`pt-5 ${sticky ? "bg-ground" : ""}`}>
       <div
         ref={headRef}
         className={`flex items-baseline justify-between gap-3 px-4 pb-2 ${
