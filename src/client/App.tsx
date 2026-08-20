@@ -443,8 +443,14 @@ export function App() {
    * — the answer the reader came for — down the page to make room. On a phone,
    * and on the timeline, which has no rail, that same rule puts it back at the
    * top of the page. Rendered once per view, never twice on one page.
+   *
+   * `rail` is passed straight through to `GameFocus`: `true` for the
+   * checklist's sidebar column, `false` for timeline/archive, which render it
+   * directly in the page at full width — there a standing rail of full-width
+   * chips would eat most of the screen before a reader sees an event, so it
+   * wraps as natural-width pills instead.
    */
-  const focusBar = (
+  const focusBar = (rail: boolean) => (
     <GameFocus
       games={enabled}
       focus={focus}
@@ -455,6 +461,7 @@ export function App() {
       onAdvance={() => update({ focusGame: advanceFocus(focus, enabled) })}
       sources={state.feed.sources}
       now={now}
+      rail={rail}
     />
   );
 
@@ -542,7 +549,7 @@ export function App() {
             onToggleCollapsed={() => update({ showNextUp: !prefs.showNextUp })}
           />
 
-          {focusBar}
+          {focusBar(true)}
             </div>
           </aside>
 
@@ -610,7 +617,7 @@ export function App() {
         </div>
       ) : view === "timeline" ? (
         <>
-          {focusBar}
+          {focusBar(false)}
 
           <Timeline
             rows={visible}
@@ -633,7 +640,7 @@ export function App() {
         </>
       ) : (
         <>
-          {focusBar}
+          {focusBar(false)}
 
           <Archive
             rows={archived}

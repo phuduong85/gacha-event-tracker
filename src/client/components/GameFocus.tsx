@@ -29,6 +29,7 @@ export function GameFocus({
   onAdvance,
   sources,
   now,
+  rail,
 }: {
   /** Games the reader has switched on, in feed order. */
   games: LaneId[];
@@ -43,6 +44,17 @@ export function GameFocus({
   /** For the freshness note under the list — see Freshness.tsx. */
   sources: SourceHealth[];
   now: number;
+  /**
+   * `true` inside App's narrow sidebar column at `lg:`, where a standing rail
+   * of full-width chips fits the width it's given. `false` everywhere this
+   * renders directly in the page instead — the timeline and archive views
+   * have no sidebar, and a rail stretched across the whole page turned every
+   * chip into its own full-width row, which is most of the screen before a
+   * reader ever sees an event. Required rather than defaulted, so a new call
+   * site has to say which one it means instead of silently inheriting the
+   * rail meant for the sidebar.
+   */
+  rail: boolean;
 }) {
   const gameMeta = useGameMeta();
   const iconUrl = useGameIconUrl();
@@ -61,20 +73,25 @@ export function GameFocus({
   );
 
   return (
-    // Below `lg:`, a horizontal scroll strip under the header — the reach a
-    // thumb already has on a phone. At `lg:` and up it becomes a standing
-    // left rail instead: a mouse can hit any game in one click, and there is
-    // finally the width to spare for a persistent list rather than a scroller.
+    // Below `lg:`, always a horizontal strip that wraps as needed — the reach
+    // a thumb already has on a phone, and the same shape `rail={false}` asks
+    // for deliberately at every width. At `lg:` and up, `rail` decides
+    // whether it becomes a standing left rail (the sidebar has the width to
+    // spare for one) or stays a wrapped strip (everywhere else does not).
     //
-    // No sticky/width/border of its own any more — this sits inside App's
-    // `<aside>`, which already owns those for the whole sidebar column (this,
-    // NextUp, and Dailies together). Claiming them here too nested a second
-    // sticky element inside an already-sticky, scrolling parent, which is
-    // what overlapped this onto NextUp below it.
+    // No sticky/width/border of its own any more — the rail case sits inside
+    // App's `<aside>`, which already owns those for the whole sidebar column
+    // (this, NextUp, and Dailies together). Claiming them here too nested a
+    // second sticky element inside an already-sticky, scrolling parent, which
+    // is what overlapped this onto NextUp below it.
     <section className="border-b border-hairline px-4 py-3">
       {hasChoice && (
         <>
-          <div className="flex items-baseline justify-between gap-3 lg:flex-col lg:items-start lg:gap-1">
+          <div
+            className={`flex items-baseline justify-between gap-3 ${
+              rail ? "lg:flex-col lg:items-start lg:gap-1" : ""
+            }`}
+          >
             <p className="eyebrow">Focus</p>
             <button
               type="button"
@@ -89,9 +106,14 @@ export function GameFocus({
           <div
             role="group"
             aria-label="Focus on one game"
-            className="scroll-x -mx-4 mt-2 flex gap-1.5 px-4 pb-1 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0 lg:pt-1"
+            className={
+              rail
+                ? "scroll-x -mx-4 mt-2 flex gap-1.5 px-4 pb-1 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0 lg:pt-1"
+                : "mt-2 flex flex-wrap gap-1.5"
+            }
           >
             <Chip
+              rail={rail}
               label="All"
               count={total}
               on={focus === null}
@@ -102,6 +124,7 @@ export function GameFocus({
               const game = gameMeta(id);
               return (
                 <Chip
+                  rail={rail}
                   key={id}
                   label={game.short}
                   ariaLabel={game.name}
@@ -140,6 +163,7 @@ function Chip({
   on,
   hue,
   onClick,
+  rail,
 }: {
   label: string;
   ariaLabel?: string | undefined;
@@ -149,6 +173,8 @@ function Chip({
   on: boolean;
   hue: string;
   onClick: () => void;
+  /** See the `rail` prop on {@link GameFocus} — same sidebar-vs-standalone split. */
+  rail: boolean;
 }) {
   return (
     <button
@@ -156,7 +182,9 @@ function Chip({
       onClick={onClick}
       aria-pressed={on}
       aria-label={`${ariaLabel ?? label}, ${count} outstanding`}
-      className="flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors lg:w-full lg:justify-between"
+      className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+        rail ? "lg:w-full lg:justify-between" : ""
+      }`}
       style={{
         borderColor: on ? hue : `color-mix(in srgb, ${hue} 30%, transparent)`,
         color: on ? hue : "var(--color-muted)",
