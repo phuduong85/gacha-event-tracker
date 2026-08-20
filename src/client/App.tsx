@@ -962,7 +962,13 @@ function Section({
     <section className={`pt-5 ${sticky ? "bg-ground" : ""}`}>
       <div
         ref={headRef}
-        className={`flex items-baseline justify-between gap-3 px-4 pb-2 ${
+        // items-center rather than items-baseline: the sort pills carry their
+        // own border and padding, which sit taller than the plain <h2> text
+        // they're aligned against — baseline alignment let that extra height
+        // poke up past the row's own top edge and into the sticky header
+        // above it, where the header's border rendered across the pill.
+        // Centering keeps the pill fully inside the row's own box instead.
+        className={`flex items-center justify-between gap-3 px-4 pb-2 ${
           sticky ? "lg:sticky lg:z-20 lg:bg-ground" : ""
         }`}
         style={sticky ? { top: stickyTop, boxShadow: bleed } : undefined}
